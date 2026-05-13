@@ -1,0 +1,49 @@
+{
+  "name": "hivedeploy-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Customer-facing documentation site for Hivedeploy",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "prebuild": "tsx scripts/snapshot-openapi.ts",
+    "build": "next build",
+    "postbuild": "tsx scripts/generate-llms-txt.ts && tsx scripts/generate-changelog-rss.ts && next-sitemap",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "css-drift": "tsx scripts/check-css-drift.ts"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "nextra": "3.0.0",
+    "nextra-theme-docs": "3.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@scalar/api-reference-react": "0.3.180",
+    "@vercel/og": "0.6.3",
+    "@vercel/analytics": "1.3.1",
+    "lucide-react": "0.412.0",
+    "gray-matter": "4.0.3",
+    "glob": "10.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "typescript": "5.5.3",
+    "tsx": "4.16.2",
+    "vitest": "2.0.3",
+    "@vitest/coverage-v8": "2.0.3",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5",
+    "prettier": "3.3.3",
+    "next-sitemap": "4.2.3"
+  }
+}
