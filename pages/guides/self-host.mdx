@@ -1,0 +1,317 @@
+---
+title: Self-host
+description: Run your own Hivedeploy orchestrator via docker-compose. For operators who need on-prem or air-gapped deployment.
+diataxis: how-to
+---
+
+> SaaS users can skip this page entirely — we host everything for you at `app.hivedeploy.in`.
+> This guide is only for operators who want to run the orchestrator on their own infrastructure.
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+- A **Linux server** with Docker Engine 24+ and the `docker compose` plugin installed. Ubuntu 22.04 LTS is the tested baseline.
+- A **public domain** you own with DNS control (e.g. via Cloudflare). The OIDC issuer and email verification links require a publicly-reachable HTTPS endpoint.
+- A **managed Postgres 15+** instance, or willingness to run it in a container. The backend uses async Postgres via `asyncpg`.
+- A **managed Redis 7+** instance, or willingness to run it in a container. Used as the Celery task broker and general cache.
+- A **managed MongoDB 7+** instance, or willingness to run it in a container. Used for chat history and agent session storage.
+- An **[Anthropic API key](https://console.anthropic.com/)** — the backend calls Claude for every agent conversation.
+- A **[Resend](https://resend.com/) account** with a verified sending domain for transactional email (verification, password reset, notifications).
+- A **[Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/)** site key + secret key for bot-protection on the signup and login forms.
+- Optionally, a **Stripe account** if you intend to run billing. Set `PAYMENT_PROVIDER=none` to skip billing entirely (see Step 2).
+
+## Step 1 — Clone the backend repo
+
+The backend repo is currently internal. Contact your Hivedeploy representative for repository access or a build artifact.
+Once you have access:
+
+```bash
+git clone https://github.com/<owner>/backend-ai-orchestrator.git
+cd backend-ai-orchestrator
+```
+
+If you are building from an open specification rather than the reference implementation, the expected project structure is documented in the architecture overview.
+
+## Step 2 — Set environment variables
+
+Copy the example file and fill in each value:
+
+```bash
+cp .env.example .env
+```
+
+### Required vars
+
+These must be set before the backend will start:
+
+| Var | Description |
+|---|---|
+| `DATABASE_URL` | Postgres connection string. Format: `postgresql+asyncpg://user:pass@host:5432/db` |
+| `REDIS_URL` | Redis URL. Format: `redis://host:6379/0` |
+| `MONGO_URL` | MongoDB URL with auth. Format: `mongodb://admin:pw@host:27017/dbname?authSource=admin` |
+| `MONGO_DB` | Default Mongo database name |
+| `JWT_SECRET` | HS256 secret for API auth JWTs. **Minimum 32 bytes.** Generate with: `openssl rand -hex 32` |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude calls |
+| `RESEND_API_KEY` | Resend.com API key |
+| `EMAIL_FROM` | Sending address for transactional email (e.g. `no-reply@yourdomain.com`) |
+| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile public site key (also used by the frontend) |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret key (verified by the backend) |
+
+### Environment / mode vars
+
+| Var | Default | Description |
+|---|---|---|
+| `ENV` | `local` | One of `local`, `staging`, `production`. In `production` mode the startup validator enforces stricter config requirements — for example, it requires KMS-backed OIDC signing instead of a plain PEM file. |
+| `APP_BASE_URL` | `http://localhost:3000` | Frontend URL, used in email verification links and Stripe redirect URLs |
+| `FRONTEND_URL` | `http://localhost:3000` | Legacy duplicate of `APP_BASE_URL`; will be consolidated in a future release |
+| `ALLOWED_ORIGINS` | `https://app.hivedeploy.in,http://localhost:3000` | CORS allow-list. Set to your frontend URL in production |
+
+### Optional but recommended
+
+| Var | Default | Description |
+|---|---|---|
+| `PAYMENT_PROVIDER` | `stripe` | Set to `none` to skip Stripe validation entirely. Useful if you are not running billing. |
+| `SIGNUP_MODE` | `invite_only` | One of `open`, `invite_only`, `waitlist`. `invite_only` is the safe default for private deployments. |
+| `GCP_WIF_ISSUER_ENABLED` | `false` | Set to `true` to enable the OIDC issuer endpoints (`/.well-known/openid-configuration` and `/.well-known/jwks.json`). Required if any of your customers connect GCP accounts. |
+| `JWT_ISSUER_URL` | — | Public HTTPS URL for the OIDC issuer. Must be reachable from GCP. Required when `GCP_WIF_ISSUER_ENABLED=true`. |
+| `JWT_ISSUER_PRIVATE_KEY_PATH` | — | Filesystem path to the PEM signing key inside the container. Required when `GCP_WIF_ISSUER_ENABLED=true` and `ENV` is not `production`. |
+| `CELERY_BROKER_URL` | (falls back to `REDIS_URL`) | Override if you want a dedicated Celery broker separate from your main Redis instance. |
+| `NOTIFICATIONS_RETENTION_DAYS` | `90` | How long in-app notifications are retained before purge. |
+
+For the full list of every supported variable — including Stripe, GCP KMS, and JWT tuning knobs — see [Reference: Environment variables](/reference/env-vars).
+
+## Step 3 — Volume-mount the OIDC signing key
+
+> Skip this step if you do not need GCP Workload Identity Federation. If `GCP_WIF_ISSUER_ENABLED` is `false`, no key is needed.
+
+The orchestrator's OIDC issuer signs short-lived JWTs that GCP uses to grant your customers' service accounts access to their own projects. The signing key never leaves your server — GCP only needs the public JWKS endpoint.
+
+**Generate the key on the host:**
+
+```bash
+mkdir -p /home/ubuntu/secrets
+openssl genrsa -out /home/ubuntu/secrets/issuer.pem 2048
+chmod 600 /home/ubuntu/secrets/issuer.pem
+```
+
+The `docker-compose.yml` mounts this into both the `api` and `celery_worker` services (the worker runs the daily key-rotation task):
+
+```yaml
+services:
+  api:
+    volumes:
+      - /home/ubuntu/secrets/issuer.pem:/etc/orchestrator-secrets/issuer.pem:ro
+
+  celery_worker:
+    volumes:
+      - /home/ubuntu/secrets/issuer.pem:/etc/orchestrator-secrets/issuer.pem:ro
+```
+
+Set the matching env var in `.env`:
+
+```bash
+JWT_ISSUER_PRIVATE_KEY_PATH=/etc/orchestrator-secrets/issuer.pem
+```
+
+The `:ro` mount flag ensures the container cannot overwrite the key. The `celery_worker` needs the same mount because the daily key-rotation Celery task (`app/security/oidc_issuer/rotation.py`) reads it to generate the public JWKS.
+
+> **Production note:** For a true production deployment, replace the PEM file approach with GCP KMS. Set `JWT_ISSUER_KMS_KEY` to your KMS key version resource name instead. When `ENV=production`, the startup validator rejects plain-PEM config and requires KMS. KMS integration is the roadmap item `kms-signing-key`.
+
+## Step 4 — Bring the stack up
+
+If you are running Postgres, Redis, and MongoDB in containers (the `docker-compose.yml` defaults), the compose file includes health-checked dependencies so the `api` and `celery_worker` services wait for the datastores to be ready before starting:
+
+```bash
+docker compose up -d
+```
+
+Tail the API logs and wait for the Uvicorn startup line:
+
+```bash
+docker compose logs -f api
+# Look for: "Uvicorn running on http://0.0.0.0:8000"
+```
+
+If you are using **external managed databases**, remove (or comment out) the `postgres`, `redis`, and `mongo` service blocks from `docker-compose.yml`, and ensure the `DATABASE_URL`, `REDIS_URL`, and `MONGO_URL` values in `.env` point at your external endpoints. The `api` and `celery_worker` services will connect directly.
+
+## Step 5 — Run database migrations
+
+The backend uses Alembic for Postgres schema migrations. Run them against your database after the `api` container is up:
+
+```bash
+docker compose exec api alembic upgrade head
+```
+
+Always run this command after pulling new code (see [Upgrades](#upgrades) below). Migrations are additive and safe to re-run.
+
+## Step 6 — Create your first admin user
+
+With `SIGNUP_MODE=invite_only` (the default), the signup form requires an invite link. For bootstrapping the first admin:
+
+1. Temporarily set `SIGNUP_MODE=open` in `.env` and restart the API:
+   ```bash
+   docker compose up -d api
+   ```
+2. Navigate to your frontend URL and create an account.
+3. Promote the account to admin via a direct database update:
+   ```bash
+   docker compose exec api python -c "
+   import asyncio
+   from app.db import get_session
+   from app.domains.users.repository import UserRepository
+   asyncio.run(UserRepository.set_admin('your@email.com'))
+   "
+   ```
+   If no CLI helper exists in your build, connect to Postgres directly:
+   ```sql
+   UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
+   ```
+4. Set `SIGNUP_MODE=invite_only` again in `.env` and restart:
+   ```bash
+   docker compose up -d api
+   ```
+
+Your admin account can now generate invite links from the Team management settings page.
+
+## Step 7 — Verify the deployment
+
+Run through these checks before handing the instance to users:
+
+**Frontend loads:**
+
+Navigate to your configured `APP_BASE_URL`. The Hivedeploy login page should appear.
+
+**Auth works:**
+
+Sign up and log in with your admin account. You should reach the agents dashboard.
+
+**API health:**
+
+```bash
+curl https://your-domain.example.com/healthz
+# Expected: {"status":"ok"}
+```
+
+**OIDC issuer responds** (only if `GCP_WIF_ISSUER_ENABLED=true`):
+
+```bash
+curl https://your-domain.example.com/.well-known/openid-configuration
+```
+
+This must return a JSON document with `"issuer"` set to your `JWT_ISSUER_URL` value. If this endpoint is unreachable from the public internet, GCP Workload Identity Federation will not work for your customers — the `/.well-known/*` routes must be served over HTTPS on a publicly-routable domain.
+
+**Email delivery:**
+
+Trigger a password reset for your admin account and confirm the email arrives from your `EMAIL_FROM` address.
+
+## Operational concerns
+
+### Reverse proxy and TLS
+
+The `api` service listens on port `8000` (plain HTTP). In production, place a reverse proxy (Nginx, Caddy, Cloudflare Tunnel) in front of it to terminate TLS and forward to port `8000`. Example Caddy configuration:
+
+```
+your-domain.example.com {
+  reverse_proxy localhost:8000
+}
+```
+
+Caddy handles ACME certificate provisioning automatically. If you use Cloudflare as your DNS provider, set Cloudflare SSL mode to **Full (strict)** once the cert is provisioned.
+
+### Backups
+
+| Datastore | Backup strategy |
+|---|---|
+| **Postgres** | Daily `pg_dump`, retain 30 days. Postgres holds users, deployments, audit logs, and billing records — it is your source of truth. |
+| **MongoDB** | Daily `mongodump` if you use agent chat history. Mongo data is regenerable from re-running agents, but losing it means losing conversation context. |
+| **Redis** | No backup needed. Redis is used as a Celery task broker and ephemeral cache only. Data loss on Redis restart causes in-flight tasks to fail but does not lose persistent state. |
+| **OIDC signing key** | Back up `/home/ubuntu/secrets/issuer.pem` to a secrets manager or encrypted offsite store. Losing it requires regenerating the key and re-federating any connected GCP accounts. |
+
+### Upgrades
+
+```bash
+cd backend-ai-orchestrator
+git pull
+docker compose up -d --build api celery_worker
+docker compose exec api alembic upgrade head
+```
+
+Run migrations **after** the new containers are running. The Alembic migrations are written to be safe on a running database with the old schema still in place, so there is no need for downtime.
+
+Check the [Changelog](/changelog) before upgrading for any breaking changes that require manual steps.
+
+### Scaling out Celery workers
+
+The `celery_worker` service is stateless — it reads tasks from Redis and writes results to Postgres and Mongo. To handle more concurrent agent jobs, increase the number of worker containers. In `docker-compose.yml`:
+
+```yaml
+celery_worker:
+  deploy:
+    replicas: 3
+```
+
+Or run a separate `docker compose up -d --scale celery_worker=3`. Workers do not coordinate with each other beyond the Redis queue.
+
+Each worker process uses `--concurrency=4` (set in the `command` field of `docker-compose.yml`), giving 4 async worker threads per container. Increase this if your agent tasks are IO-bound rather than CPU-bound.
+
+### Monitoring and alerts
+
+The backend exposes two monitoring endpoints:
+
+| Endpoint | Description |
+|---|---|
+| `GET /healthz` | Returns `{"status":"ok"}` when the API is up and database connections are live. Suitable for load balancer health checks. |
+| `GET /metrics` | Prometheus metrics (if enabled). Scrape with your monitoring stack (Prometheus + Grafana, Datadog, etc.). |
+
+Recommended alerts:
+- **Celery queue depth** — alert if the `celery` queue in Redis exceeds 50 tasks for more than 5 minutes. This usually indicates worker starvation.
+- **API error rate** — alert on sustained 5xx rate above 1% of requests.
+- **Postgres connection pool exhaustion** — alert if connection wait time exceeds 500ms.
+
+### Rotating the OIDC signing key
+
+Key rotation invalidates outstanding federated tokens. Because the default token TTL is 5 minutes (`JWT_ISSUER_TOKEN_TTL_SECONDS=300`), in-flight agent sessions using the old key will fail within 5 minutes of rotation. Plan rotations during low-traffic windows.
+
+1. Generate a new key on the host:
+   ```bash
+   openssl genrsa -out /home/ubuntu/secrets/issuer-new.pem 2048
+   chmod 600 /home/ubuntu/secrets/issuer-new.pem
+   ```
+2. Atomically replace the mounted file (the container sees the bind-mount update):
+   ```bash
+   mv /home/ubuntu/secrets/issuer-new.pem /home/ubuntu/secrets/issuer.pem
+   ```
+3. Restart both services to flush any in-memory key cache:
+   ```bash
+   docker compose restart api celery_worker
+   ```
+4. Verify the JWKS endpoint serves the new public key:
+   ```bash
+   curl https://your-domain.example.com/.well-known/jwks.json | jq '.keys[0].kid'
+   ```
+
+If you set `KEY_OVERLAP_DAYS` (default `7`), the old public key remains in the JWKS for 7 days after rotation, allowing any tokens issued with the old key to validate during their TTL window.
+
+For production, migrate to GCP KMS signing (`JWT_ISSUER_KMS_KEY`) — GCP KMS handles key rotation automatically and removes the manual PEM management burden entirely.
+
+## Differences from the SaaS deployment
+
+Self-hosting gives you full control but comes with operational responsibilities the SaaS deployment handles for you:
+
+| Concern | SaaS | Self-hosted |
+|---|---|---|
+| TLS certificates | Managed by Cloudflare + Vercel | Your responsibility (Caddy, Nginx + Certbot, etc.) |
+| Database backups | Daily automated | Your responsibility |
+| Postgres / Redis / Mongo upgrades | Managed | Your responsibility |
+| Uptime SLA | Yes | No (your infrastructure) |
+| OIDC key rotation | Automated via KMS | Manual (or migrate to KMS yourself) |
+| Stripe billing | Configured | Optional — set `PAYMENT_PROVIDER=none` to skip |
+| GCP WIF issuer | `app.hivedeploy.in` as issuer URL | Your domain as issuer URL — **must be publicly reachable** |
+
+## See also
+
+- [Concepts: Security and WIF](/concepts/security-wif) — how the OIDC issuer works and why GCP needs it
+- [Reference: Environment variables](/reference/env-vars) — complete list of every supported backend config knob
+- [Connect GCP](/connect-clouds/gcp) — what your customers configure after you have the OIDC issuer running
+- [Troubleshooting: Cloud 403 errors](/troubleshooting/cloud-403) — common permission errors when connecting cloud accounts
