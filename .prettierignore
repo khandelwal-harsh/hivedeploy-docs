@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+public/llms*.txt
+public/*.md
+public/openapi.json
+public/sitemap.xml
+public/changelog.xml
+pnpm-lock.yaml
