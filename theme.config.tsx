@@ -17,8 +17,11 @@ function Head() {
   const section = router.asPath.split('/')[1] ?? ''
   const ogUrl = `https://docs.hivedeploy.in/api/og?title=${encodeURIComponent(title)}&section=${encodeURIComponent(section)}`
   const canonical = `https://docs.hivedeploy.in${router.asPath.split('?')[0]}`
+  const pageTitle =
+    router.asPath === '/' ? 'Hivedeploy docs' : `${title} | Hivedeploy docs`
   return (
     <>
+      <title>{pageTitle}</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta name="description" content={description} />
       <meta property="og:site_name" content="Hivedeploy docs" />
