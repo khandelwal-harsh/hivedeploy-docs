@@ -1,0 +1,189 @@
+
+import { Callout } from '../../components/Callout'
+
+The AI Orchestrator treats AWS, GCP, and Azure as **first-class
+deployment targets**. Every applicable specialist agent supports all
+three (or however many it makes sense for that technology). There's
+no "AWS-first, with GCP support coming soon" treatment.
+
+This isn't a marketing position — it's an architectural decision
+that shapes the platform's design. This page explains why.
+
+## The default in this market: AWS-first
+
+Most deployment platforms ship with AWS support, then bolt on GCP +
+Azure as second-class:
+
+- Heroku: AWS-only until very recently
+- Vercel: edge functions on their own infra, GCP/AWS for backends
+  via integration packs (not first-class)
+- Render: AWS-only
+- Railway: GCP-only
+- Fly.io: their own infra
+
+This works at scale for those companies, but creates **vendor lock-in
+risk** for their customers. A customer who builds on Heroku is
+implicitly building on AWS — switching means a rewrite.
+
+## What "first-class multi-cloud" means here
+
+Three guarantees:
+
+1. **Every UI surface that picks a cloud lets you pick any of the
+   three.** No second-tier dropdown saying "GCP and Azure support
+   coming soon."
+2. **Every specialist agent that has a cloud-specific implementation
+   ships all three implementations in the same release.** Postgres
+   agent ships RDS + Cloud SQL + Azure Database support at the same
+   time, not RDS-first.
+3. **Multi-cloud customers are a deliberately supported use case.**
+   Connect AWS *and* GCP simultaneously; deploy your Python service
+   to AWS, your Snowflake to its native cloud (also AWS), and your
+   Kubernetes to GCP for cost reasons. The platform doesn't push you
+   to consolidate.
+
+## Why we built it this way
+
+### 1. Customer demand
+
+The fastest-growing customer segment is companies that have
+already-existing footprints in multiple clouds — they bought a
+SaaS that runs on AWS, their analytics team chose Snowflake (also
+AWS), their ML team chose Vertex AI (GCP), their corp IT lives on
+Azure (M365). They don't want to consolidate; they want a single
+control plane.
+
+### 2. Architectural integrity
+
+A truly cloud-agnostic IDP is structurally different from a
+cloud-specific one:
+
+- Provider abstraction layer (`provider_adapter`) is a first-class
+  module, not a wrapper
+- Per-cloud memory packs in every specialist agent (RDS-specific
+  patterns + Cloud SQL-specific patterns + Azure-specific patterns)
+- Gates that ask "which cloud" early (Gate 3) so the rest of the flow
+  branches correctly
+- IAM models that abstract over GCP WIF + AWS cross-account roles +
+  Azure service principals into one "cloud account" entity
+
+This costs more to build but makes the platform durable. Adding a new
+specialist is one feature; adding a new cloud-specific implementation
+of an existing specialist is a memory-file update.
+
+### 3. Strategic positioning
+
+Pure-AWS platforms compete with each other on "who hosts cheaper
+EC2". Multi-cloud platforms compete on "who has the best abstraction
+over cloud-specific complexity" — which is a more durable moat.
+
+## How cloud accounts work
+
+When you connect a cloud, the orchestrator creates a **cloud account**
+record. It includes:
+
+- The provider (`aws` / `gcp` / `azure`)
+- A label (free-text, e.g., `prod-aws`)
+- Credentials (federated trust config — not actual secrets)
+- A default region
+
+You can have **multiple cloud accounts**, including multiple of the
+same provider. Examples:
+
+- `prod-gcp` + `dev-gcp` (two GCP projects, isolated billing)
+- `prod-aws` + `prod-gcp` (multi-cloud production)
+- `payments-aws` + `analytics-snowflake-aws` (separate AWS accounts
+  for compliance)
+
+At Gate 3 of each deployment, the agent asks which cloud account to
+deploy into. You pick from your connected accounts.
+
+## Per-cloud differences agents handle for you
+
+When you say "deploy a Postgres", the Postgres agent generates
+different IaC depending on Gate 3:
+
+| If Gate 3 = | The agent provisions |
+|---|---|
+| GCP | `google_sql_database_instance` (Cloud SQL), private IP via VPC peering, regional HA via failover replicas |
+| AWS | `aws_db_instance` (RDS), private VPC subnet, Multi-AZ deployment, automated backups |
+| Azure | `azurerm_postgresql_flexible_server`, Private Endpoint or VNet integration, zone-redundant HA |
+| Self-managed on K8s | StatefulSet with PVC, Zalando Postgres Operator or Crunchy, with monitoring sidecars |
+
+The user-facing question at Gate 4 ("how big a DB?") is the same
+regardless. The translation to cloud-specific tiers (`db-custom-2-7680`
+for GCP, `db.m5.large` for AWS, `Standard_D2s_v3` for Azure) happens
+inside the agent.
+
+## Per-cloud feature gaps
+
+We're honest about where cloud capabilities diverge:
+
+- **BigQuery** is GCP-only (no Snowflake-like AWS equivalent for our
+  bigquery agent). On AWS the closest is Athena, which is the `athena`
+  agent's domain.
+- **DynamoDB** is AWS-only. The closest on GCP is Firestore (under
+  the `cosmosdb`-style document DB agents).
+- **Azure Functions Premium** behaves differently from Lambda /
+  Cloud Functions — Azure agent docs flag this explicitly.
+
+The platform doesn't pretend technologies are equivalent when
+they're not — it surfaces the differences so you make informed
+choices.
+
+## Switching costs
+
+When you deploy to one cloud and later want to switch:
+
+- **Stateless services** (Python / Node / Go web apps) — the agent
+  can re-deploy to a different cloud and you switch DNS. Hours of work.
+- **Databases with data** — the agent walks you through dump/restore
+  or replication-based migration. Days to weeks depending on size.
+- **Compounding integrations** (e.g., heavy use of AWS-specific
+  features like SES / Cognito / Step Functions) — high switching
+  cost, won't be fixed by this platform alone.
+
+The orchestrator makes switching **possible** and **guided** — not
+trivial. Trivial would require pretending clouds are interchangeable;
+they're not.
+
+## When NOT to use multiple clouds
+
+Multi-cloud has real costs:
+
+- **Egress bandwidth between clouds is expensive.** A Postgres on GCP
+  + a Python service on AWS means every DB query pays cross-cloud
+  egress.
+- **Latency between clouds is higher.** ~10-50ms between regions of
+  the same cloud; ~30-200ms between different clouds.
+- **Operational complexity is real.** Two cloud bills, two IAM
+  systems, two compliance reports.
+
+Recommended pattern: **one cloud per "system"**, with multiple cloud
+accounts allowed for compliance / billing isolation within a cloud.
+Use the multi-cloud capability for crossing organizational boundaries
+(team A's stack on AWS, team B's on GCP), not for splitting a single
+service across clouds.
+
+## Roadmap: other clouds
+
+Currently shipped: AWS, GCP, Azure.
+
+On the roadmap (no committed dates):
+
+- **Oracle Cloud Infrastructure (OCI)** — large enterprise demand
+  in some segments
+- **IBM Cloud** — niche; only if specific enterprise customers ask
+- **DigitalOcean** — popular with bootstrappers; useful pre-revenue
+- **Hetzner / OVH** — cost-sensitive European customers
+- **Self-hosted (Kubernetes on any provider, bare metal)** —
+  the existing `kubernetes` agent supports this already; not "another
+  cloud" per se
+
+## See also
+
+- [Connect AWS](/connect-clouds/aws)
+- [Connect GCP](/connect-clouds/gcp)
+- [Connect Azure](/connect-clouds/azure)
+- [Concepts — Security model](/concepts/security-wif) — how multi-cloud
+  isolation works at the trust boundary

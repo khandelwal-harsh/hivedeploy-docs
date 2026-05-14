@@ -26,7 +26,7 @@ you're just trying to deploy something, start with the
    │       │      └──────────► Redis      (sessions, caching, Celery broker, credentials cache)
    │       └─────────────────► MongoDB    (specialist memory — agent knowledge files)
    │
-   └──► Anthropic API  (the LLM doing the reasoning per agent turn)
+   └──► LLM provider  (the model doing the reasoning per agent turn)
                 │
    ┌────────────┘
    ▼
@@ -101,7 +101,7 @@ roughly this happens:
    - Relevant memory files from MongoDB (per current gate, per cloud)
    - Session history (recent messages)
    - User's message
-5. Backend calls Anthropic API (Claude)
+5. Backend calls the LLM provider
 6. Streamed tokens come back; backend pipes them via SSE to frontend
 7. When complete: backend persists the assistant message
 8. If the assistant produced a tool call (e.g., "run gate 5 plan"):
@@ -112,8 +112,8 @@ roughly this happens:
 9. Frontend updates UI in real time
 ```
 
-Per-message latency is dominated by Anthropic API streaming
-(typically 5-20s for a substantial response).
+Per-message latency is dominated by LLM streaming
+(typically 5–20s for a substantial response).
 
 ## Per-org isolation throughout
 
@@ -129,7 +129,7 @@ ever exist in your audit log — clean separation.
 ## The agent runtime
 
 Specialist agents aren't separate processes — they're prompt
-configurations evaluated by the same Anthropic API call. The
+configurations evaluated by the same LLM call. The
 "specialist" abstraction is encoded as:
 
 - A unique `agent_id` (`postgres`, `kafka`, etc.)
@@ -139,12 +139,12 @@ configurations evaluated by the same Anthropic API call. The
 - A `tools/` set the specialist can call (run plan, run apply, query
   audit, etc.)
 
-At chat time, the backend assembles {system_prompt} + {memory
-relevant to current gate} + {session history} + {user message} →
-one Anthropic API call.
+At chat time, the backend assembles the specialist's system prompt
+plus the memory relevant to the current gate, the session history,
+and the user's latest message, then issues a single LLM call.
 
 Adding a new specialist = adding a new directory in
-`app/domains/agents/specialists/<agent_id>/`. No new service to
+`app/domains/agents/specialists/[agent_id]/`. No new service to
 deploy; the same backend handles all 140 specialists.
 
 ## Cloud federation flow
@@ -152,7 +152,7 @@ deploy; the same backend handles all 140 specialists.
 When the orchestrator needs to act on your cloud (e.g., during Gate
 6 `terraform apply`):
 
-```
+```text
 1. Worker requests creds for (org_id, cloud_account_id)
 2. Redis cache: hit (use cached token) | miss (mint new)
 3. On miss:

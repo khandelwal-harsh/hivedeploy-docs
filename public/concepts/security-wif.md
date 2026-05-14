@@ -1,0 +1,269 @@
+
+import { Callout } from '../../components/Callout'
+
+The AI Orchestrator deploys resources into **your** cloud account on
+your behalf. This requires the orchestrator to authenticate against
+your cloud. The naïve approach — "give the SaaS your access keys" —
+creates an enormous blast radius: one compromise of the SaaS = every
+customer's cloud is exposed.
+
+We use **Workload Identity Federation (WIF)** instead. This document
+explains the security model in enough detail that a security-aware
+customer (or auditor) can independently evaluate it.
+
+## TL;DR
+
+- The orchestrator **holds no long-lived cloud credentials**. There
+  is no AWS access key, GCP service account JSON, or Azure client
+  secret stored anywhere in our infrastructure.
+- The orchestrator authenticates itself by minting short-lived JWTs
+  (5-minute TTL) signed by a private RSA key.
+- Your cloud account is configured to trust JWTs from the
+  orchestrator's OIDC issuer, scoped to **your specific org** via a
+  cryptographic attribute mapping.
+- A compromise of the orchestrator's signing key (production:
+  HSM-protected via GCP KMS) is the only path to impersonating any
+  customer's cloud account.
+
+## The OIDC issuer
+
+The orchestrator runs a public OIDC issuer at
+`https://backend.hivedeploy.in/.well-known/openid-configuration` and
+`https://backend.hivedeploy.in/.well-known/jwks.json`.
+
+These endpoints publish the **public keys** that customers' cloud
+WIF providers use to verify the orchestrator's JWTs. The
+corresponding **private signing key** lives in:
+
+- **Production:** GCP KMS, asymmetric signing key, algorithm
+  `RSA_SIGN_PKCS1_2048_SHA256`. The key bytes never exit the HSM
+  boundary — even our backend code can't read them; it can only
+  request signatures via the KMS API.
+- **Staging / development:** a PEM file on disk, generated locally.
+  Used during development of the orchestrator itself; never used to
+  serve real customer traffic.
+
+The validator at startup enforces this: `ENV=production` requires
+`JWT_ISSUER_KMS_KEY` to be set, and rejects the boot if any local
+PEM env var is configured.
+
+## What a customer trust setup looks like
+
+When you connect a GCP project to the orchestrator (per the
+[GCP connect guide](/connect-clouds/gcp)), you create:
+
+1. A **Workload Identity Pool** in your GCP project
+2. An **OIDC provider** inside the pool, configured to trust
+   `https://backend.hivedeploy.in` as the issuer
+3. A **service account** with the GCP roles your deployments need
+4. An **IAM binding** granting the orchestrator's federated identity
+   `roles/iam.workloadIdentityUser` on the service account — scoped
+   to your specific `org_id` via `attribute.org_id/<your-org-id>`
+
+That fourth step is the security boundary. It says:
+
+> *"GCP, you may allow any caller whose JWT (verified against this
+> issuer) has the claim `org_id=o-abc123` to impersonate this service
+> account."*
+
+The orchestrator's per-request JWT carries `org_id=<the-requesting-org>`
+based on the user/org that initiated the deployment. If a different
+org's deployment tries to use your SA, the JWT has the wrong `org_id`,
+the IAM binding doesn't match, and GCP STS rejects.
+
+## The JWT claim set
+
+Every JWT minted by the orchestrator for cloud authentication carries:
+
+```json
+{
+  "iss": "https://backend.hivedeploy.in",
+  "sub": "org:o-f6bb2d865d8c",
+  "aud": "//iam.googleapis.com/projects/.../providers/orch-provider",
+  "iat": 1714521600,
+  "exp": 1714521900,
+  "jti": "550e8400-e29b-41d4-a716-446655440000",
+  "org_id": "o-f6bb2d865d8c",
+  "cloud_account_id": "ca-xyz789",
+  "deployment_id": "deploy-456",
+  "agent_id": "postgres",
+  "environment": "prod"
+}
+```
+
+The customer's WIF provider attribute mapping projects these into
+GCP's IAM attribute namespace:
+
+```
+google.subject              = assertion.sub
+attribute.org_id            = assertion.org_id
+attribute.cloud_account_id  = assertion.cloud_account_id
+attribute.environment       = assertion.environment
+```
+
+Customers can scope their IAM binding by **any of these attributes**:
+
+- `attribute.org_id/o-f6bb2d865d8c` — most common; trust ALL deployments
+  from this org
+- `attribute.org_id/o-f6bb2d865d8c AND attribute.environment/prod` —
+  more restrictive; trust only prod deployments
+- `attribute.cloud_account_id/ca-xyz789` — even tighter; trust only
+  deployments through this specific cloud account record
+
+Use the most restrictive binding that matches your operational model.
+
+## Per-request claim uniqueness
+
+Every JWT has a unique `jti` (UUIDv4) and `iat`/`exp` window. Tokens
+expire after 5 minutes (`jwt_issuer_token_ttl_seconds=300`). This
+means:
+
+- A leaked JWT (e.g., from logs) is usable for at most 5 minutes
+- Replay attacks against IAM are bounded by the TTL
+- The audit log captures `jti` for every mint, enabling per-token
+  traceability if an incident occurs
+
+## Key rotation
+
+The orchestrator's signing key rotates on a schedule:
+
+- **LocalFileKeyProvider (dev):** auto-rotates every 30 days. The
+  rotation Celery task generates a new RSA keypair, marks the old
+  one as `retired`, and includes both in the JWKS for a 7-day overlap
+  window so in-flight tokens still verify.
+- **GcpKmsKeyProvider (prod):** detect-and-alert. The orchestrator's
+  daily rotation check audits when the active KMS version is past 30
+  days old; an operator creates a new KMS version manually via
+  `gcloud kms keys versions create`. This is a deliberate
+  least-privilege choice — the orchestrator's KMS IAM only has
+  `cryptoKeyVersions.useToSign` + `viewPublicKey`, not `create`.
+
+Rotation propagates to customers in ≤1 hour (the JWKS endpoint
+serves `Cache-Control: max-age=3600`).
+
+## Attack scenarios + mitigations
+
+### Scenario 1: An attacker steals an orchestrator JWT from logs
+
+**Impact:** The attacker can call STS for 5 minutes and impersonate
+whatever org_id is in the JWT, but only against cloud accounts where
+that org has set up trust.
+
+**Mitigation:** Short TTL bounds the window. Audit logs record every
+JWT mint with `jti`, `org_id`, `kid`, `exp`. JWT payloads are never
+deliberately logged (a Hypothesis test in our test suite enforces
+this — see `tests/unit/clouds/gcp/test_adapter_no_pii_in_audits.py`).
+
+### Scenario 2: The orchestrator's backend host is compromised
+
+**Impact:** The attacker has access to the orchestrator process. In
+local-file mode, they have the private signing key bytes — full
+compromise. In KMS mode, they can request signatures from KMS for
+as long as the orchestrator's GCP credentials work, but the key
+bytes never exit the HSM.
+
+**Mitigation:** Production uses KMS. We monitor for unusual KMS sign
+volumes via Cloud Audit Logs. We rotate KMS keys quarterly. We
+require multi-factor auth on the GCP project that holds the KMS
+keyring.
+
+### Scenario 3: A customer's cloud account is compromised separately
+
+**Impact:** The attacker controls the customer's GCP project. They
+can delete the WIF pool, modify the trust binding, etc. — but they
+cannot use the orchestrator's identity to attack other customers.
+
+**Mitigation:** Each customer's trust is isolated. The orchestrator
+detects when its calls to a customer's cloud start failing (e.g., SA
+deleted) and surfaces it via audit log + UI badge.
+
+### Scenario 4: A customer tries to trust the orchestrator and impersonate another customer
+
+**Impact:** They configure their own WIF pool to trust our issuer.
+Their JWT has their own org_id. GCP IAM checks: does any cloud
+account's IAM binding grant access to *their* org_id? No, only to
+the orchestrator's bindings on the target customer's SA. Attack
+fails at the IAM check.
+
+**Mitigation:** The `attribute.org_id` scoping is the structural
+defense — customers can ONLY impersonate SAs whose IAM bindings
+include their specific org_id.
+
+### Scenario 5: Insider at the orchestrator vendor
+
+**Impact:** An employee with backend production access could
+theoretically issue arbitrary JWTs for any org_id.
+
+**Mitigations** (in increasing rigor):
+
+1. Audit logs of every JWT mint, retained 1 year, queryable
+2. Production deploys require approval + reviewed PRs (no
+   "ssh in and run code"). Direct shell access to prod is
+   minimized.
+3. Sign-mint volumes are alarmable; spikes get reviewed.
+4. (Future) KMS-mediated sign operations have Cloud Audit Log
+   entries customers could subscribe to via Pub/Sub for their own
+   monitoring — adds a customer-side audit trail.
+
+The current model accepts vendor-trust as a fundamental floor: you
+trust us not to mint malicious JWTs. This is the same floor as any
+SaaS that holds an API key for you; the WIF model just makes the
+"key" (the signing key) higher-value-but-better-protected than
+"customer-by-customer access tokens".
+
+## Comparable industry implementations
+
+The WIF-issuer pattern is industry-standard for SaaS platforms that
+orchestrate customer cloud resources:
+
+| Platform | Issuer URL |
+|---|---|
+| GitHub Actions | `token.actions.githubusercontent.com` |
+| GitLab CI | per-instance |
+| CircleCI | `oidc.circleci.com` |
+| Buildkite | per-org |
+| Terraform Cloud | `app.terraform.io` |
+| Spacelift | `spacelift.io` |
+| **AI Orchestrator** | `backend.hivedeploy.in` |
+
+If you've configured WIF for any of these, the setup pattern is
+similar — pool, provider trusting our issuer, scoped binding.
+
+## Compliance positioning
+
+The WIF model maps cleanly to common compliance requirements:
+
+- **SOC 2 CC6.1** (logical access controls): customer SAs are
+  isolated by per-org bindings; vendor cannot access them outside
+  the documented federation path
+- **SOC 2 CC6.6** (encryption / key management): production signing
+  key is HSM-protected via KMS; never extractable
+- **HIPAA / GDPR**: the orchestrator doesn't store customer cloud
+  data; it acts as an authorized agent under the customer's IAM
+  policy
+- **PCI DSS**: cardholder data never enters orchestrator scope —
+  the orchestrator provisions payment-processing infrastructure but
+  doesn't handle the data flow
+
+We are currently **not certified** in any of these (early-stage); the
+architectural alignment is in place for when certification is
+appropriate.
+
+## Open questions / non-goals
+
+- **Mutual TLS to the JWKS endpoint:** not currently — JWKS is meant
+  to be public. Adding mTLS would require customers to bake a client
+  cert into their WIF provider config, which they cannot.
+- **Per-deployment ephemeral signing keys:** future work — would
+  reduce blast radius further but requires KMS version-per-deployment.
+- **DPoP (proof-of-possession):** not implemented; would defend
+  against bearer-token replay if a JWT leaked. Worth investigating
+  for v2.
+
+## See also
+
+- [Connect GCP](/connect-clouds/gcp) — concrete WIF setup
+- [Connect AWS](/connect-clouds/aws) — uses the same OIDC
+  issuer with `AssumeRoleWithWebIdentity`
+- [Connect Azure](/connect-clouds/azure) — uses federated
+  credentials

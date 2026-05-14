@@ -7,7 +7,7 @@ diataxis: how-to
 import { Callout } from '../../components/Callout'
 
 The orchestrator has three tiers plus Enterprise. Each tier has
-fixed limits on seats, active agents, and monthly Claude API credits.
+fixed limits on seats, active agents, and monthly LLM credits.
 
 <Callout type="info">(May 2026): the platform is mid-migration from Stripe to
 an alternative payment provider. The in-app billing surface is
@@ -20,9 +20,9 @@ completes.</Callout>
 
 | Plan | Seats | Active agents | Monthly credits | Price |
 |---|---|---|---|---|
-| **Free** | 2 | 1 | $5 in Claude API | $0 |
-| **Team** | 5 | 3 | $70 in Claude API | $99 / mo |
-| **Business** | 25 | 15 | $560 in Claude API | $499 / mo |
+| **Free** | 2 | 1 | $5 in LLM credits | $0 |
+| **Team** | 5 | 3 | $70 in LLM credits | $99 / mo |
+| **Business** | 25 | 15 | $560 in LLM credits | $499 / mo |
 | **Enterprise** | Unlimited | Unlimited | Custom | Contact sales |
 
 Annual billing offered for Team and Business with ~17% discount.
@@ -40,10 +40,9 @@ basis for the cap-per-plan limit.
 
 ## What "credits" means
 
-Every agent message that calls Claude API consumes credits at the
-underlying Anthropic API rate (input + output tokens × Anthropic's
-published pricing). Each plan includes a monthly Claude credit
-budget:
+Every agent message that calls the LLM consumes credits at the
+underlying provider's rate (input + output tokens × published pricing).
+Each plan includes a monthly LLM credit budget:
 
 - Free: $5/mo — light usage, a few deployments
 - Team: $70/mo — heavy daily usage
@@ -64,7 +63,7 @@ When you hit your credit budget, chat sessions return a 402
 
 For Team and Business plans, you can opt into letting credit usage
 exceed your plan budget by up to a configurable cap. After exceeding
-the plan budget, additional usage is billed at the Anthropic
+the plan budget, additional usage is billed at the LLM provider's
 pass-through rate + a ~40% markup on top.
 
 Example:

@@ -46,7 +46,7 @@ my-agent/
 │   ├── runbooks.md
 │   └── terraform_hard_rules.md
 ├── registry.py       # PROVISIONS + TEMPLATES + Agent entity
-├── skills/           # callable tools Claude can invoke
+├── skills/           # callable tools the agent can invoke
 │   ├── __init__.py
 │   └── ...
 └── system_prompt.py  # hand-tuned system prompt for this specialist
@@ -54,7 +54,7 @@ my-agent/
 
 ## Step 2 — Add the memory pack
 
-The `memory/` folder is the specialist's knowledge base. The system prompt loader injects these files into the agent's context at conversation start (via Anthropic prompt caching — they count as a single cached prefix block).
+The `memory/` folder is the specialist's knowledge base. The system prompt loader injects these files into the agent's context at conversation start (the runtime uses prompt caching, so they count as a single cached prefix block per session).
 
 ### Standard memory files
 

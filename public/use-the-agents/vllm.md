@@ -1,0 +1,97 @@
+
+import { Callout } from '../../components/Callout'
+
+> The vLLM agent deploys and manages a vLLM inference server: GPU node group provisioning, model weight caching, OpenAI-compatible API, continuous batching, HPA on queue depth, and Prometheus metrics — on AWS EKS (primary).
+
+> **Note:** The vLLM agent is in beta. It covers single-GPU (A10G) and small multi-GPU (A100) deployments on AWS EKS. GKE, AKS, and multi-node tensor-parallel configurations are on the roadmap.
+
+## What it deploys
+
+- **EKS GPU node group** — `g5.xlarge` (1× A10G, 24 GB VRAM) or `p4d.24xlarge` (8× A100) with GPU taint and NVIDIA device plugin
+- **vLLM Deployment** — `vllm/vllm-openai` container image, OpenAI-compatible `/v1/chat/completions` and `/v1/completions` endpoints on port 8000
+- **HPA** — scales 2 → 8 replicas on `vllm_num_requests_running > 16` (custom Prometheus metric)
+- **S3 weights cache** — model weights stored in S3, mounted via PVC at pod start (~3 min cold start for an 8B model)
+- **NLB Service** — internal load balancer for in-cluster or VPC-internal consumers
+- **Prometheus ServiceMonitor** — scrapes `/metrics` (TTFT/TPOT histograms, KV cache utilization, batch size, queue depth)
+- **Grafana dashboard** — four golden signals + GPU memory utilization + request acceptance rate
+
+## Quickstart
+
+1. **Start the agent:** "Deploy a vLLM server for Llama 3.1 8B Instruct."
+2. **Gate 1 — model and requirements:** Agent asks for model name, peak QPS, TTFT target, and TPOT target. Reply with your constraints.
+3. **Gate 2 — topology:** Agent proposes `g5.xlarge` (A10G) with continuous batching, `--gpu-memory-utilization 0.9`. Confirm, or ask for A100 + tensor parallel for 70B models.
+4. **Gate 3 — sizing:** Agent shows memory math: 8B FP16 fits in 24 GB with KV cache headroom. Confirms 2 min replicas, HPA to 8.
+5. **Gate 4 — weights storage:** Agent proposes PVC + S3 cache (best cold-start speed). Approve.
+6. **Gate 5 — observability:** Agent wires Prometheus + Grafana + alert rules (TTFT P95 > 2s, queue > 100, GPU util > 95%). Approve.
+7. **Gate 6 — review and deploy:** Terraform plan shows EKS GPU node group, Helm NVIDIA device plugin, S3 bucket, vLLM Deployment, HPA. ~15 minutes (GPU node bootstrap takes longer).
+
+After deploy the agent outputs:
+- Internal NLB endpoint (e.g. `http://vllm-svc.vllm:8000`)
+- Example curl to test: `POST /v1/chat/completions`
+- S3 weights bucket name
+
+## Configuration options
+
+| Option | Default | Description |
+|---|---|---|
+| `model` | `meta-llama/Llama-3.1-8B-Instruct` | HuggingFace model ID |
+| `instance_type` | `g5.xlarge` | GPU instance (see sizing table) |
+| `min_replicas` | `2` | HPA floor |
+| `max_replicas` | `8` | HPA ceiling |
+| `max_model_len` | `8192` | Maximum context window in tokens |
+| `dtype` | `float16` | `float16` or `bfloat16`; `int8` only for models that benefit from AWQ/GPTQ |
+| `gpu_memory_utilization` | `0.9` | Fraction of VRAM for KV cache (leave 10% for overhead) |
+| `weights_cache` | `s3-pvc` | `s3-pvc` (recommended), `init-container` (slow), `baked-image` (large) |
+
+### GPU sizing reference
+
+| Model size | Instance | VRAM | Tensor parallel | Notes |
+|---|---|---|---|---|
+| 7B / 8B (FP16) | `g5.xlarge` | 24 GB | TP=1 | Cost-effective starting point |
+| 13B / 14B (FP16) | `g5.2xlarge` | 24 GB | TP=1 | Tight fit; use `int8` if needed |
+| 70B (FP16) | `p4d.24xlarge` | 8× 40 GB | TP=4 or TP=8 | Needs NVLink; 5–10× cost |
+| 8B (INT8 / AWQ) | `g5.xlarge` | 24 GB | TP=1 | Reduces VRAM ~2×; slight quality loss |
+
+## Common patterns
+
+### Testing the deployed API
+
+```bash
+curl http://vllm-svc.vllm:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "max_tokens": 100
+  }'
+```
+
+### Serving multiple LoRA adapters
+
+vLLM 0.6+ supports hot-swap of LoRA adapters on the same base model fleet. Tell the agent: "Add a LoRA adapter `my-org/llama-3-finetuned` to the existing vLLM deployment." The agent updates the Deployment args with `--lora-modules` and manages adapter loading without a full redeploy.
+
+### Scaling for higher QPS
+
+Tell the agent: "Our TTFT P95 is climbing — we're seeing 50 concurrent requests."
+
+The agent will:
+1. Review current HPA thresholds and GPU utilization metrics
+2. If a single A10G is saturated, propose upgrading to `g5.12xlarge` (4× A10G) with TP=4
+3. Alternatively, increase `max_replicas` if horizontal scaling is preferred and latency budgets allow it
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Pod stuck in `Pending` | GPU node not provisioned or taint not tolerated | Check node group is healthy; ensure pod has `tolerations` for `nvidia.com/gpu` |
+| Model loading stuck > 10 min | Slow S3 download or HF Hub rate-limited | Check S3 pre-signed URL; use `--offline` flag with pre-cached weights |
+| CUDA OOM on startup | `gpu_memory_utilization` too high or `max_model_len` too large | Reduce `--gpu-memory-utilization` to 0.85 or decrease `--max-model-len` |
+| High TTFT for first request | Cold KV cache; continuous batching not yet saturated | Normal; TTFT improves under sustained load as the KV cache warms |
+| HPA not scaling | Custom metric `vllm_num_requests_running` not in Prometheus | Check ServiceMonitor is scraping; verify `prometheus-adapter` config |
+| `NVIDIA_DEVICE_PLUGIN` not ready | Plugin DaemonSet not yet scheduled on GPU node | Wait for DaemonSet to be `Ready`; re-check node taint |
+
+## See also
+
+- [Concepts: Agents](/concepts/agents)
+- [Concepts: Gates](/concepts/gates)
+- [Reference: Agents list](/reference/agents-list)

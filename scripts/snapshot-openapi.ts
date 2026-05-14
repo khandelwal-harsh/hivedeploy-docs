@@ -45,12 +45,20 @@ async function main() {
   const url = process.env.OPENAPI_SOURCE_URL ?? 'https://backend.hivedeploy.in/openapi.json'
   console.log(`[snapshot-openapi] fetching ${url}`)
 
-  const res = await fetch(url)
-  if (!res.ok) {
-    throw new Error(`Failed to fetch OpenAPI spec from ${url}: ${res.status} ${res.statusText}`)
+  let spec: OpenAPISpec
+  if (url.startsWith('file://')) {
+    // Node fetch doesn't support file:// — read directly. Useful for CI builds without network.
+    const filePath = url.replace(/^file:\/\//, '')
+    const raw = await fs.readFile(filePath, 'utf8')
+    spec = JSON.parse(raw) as OpenAPISpec
+  } else {
+    const res = await fetch(url)
+    if (!res.ok) {
+      throw new Error(`Failed to fetch OpenAPI spec from ${url}: ${res.status} ${res.statusText}`)
+    }
+    spec = (await res.json()) as OpenAPISpec
   }
 
-  const spec = (await res.json()) as OpenAPISpec
   const filtered = filterInternalTags(spec)
 
   const outPath = path.join(process.cwd(), 'public', 'openapi.json')

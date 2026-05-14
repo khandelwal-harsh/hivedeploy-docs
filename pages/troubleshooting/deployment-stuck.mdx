@@ -72,8 +72,8 @@ indefinitely.
 
 Causes:
 
-- **LLM rate limit.** Anthropic API has per-org rate limits.
-  The orchestrator queues; usually clears in <30s. Wait.
+- **LLM rate limit.** The LLM provider applies per-org rate limits.
+  The orchestrator queues; usually clears in under 30s. Wait.
 - **Network error mid-stream.** Refresh the page — the message is
   persisted, you can re-send.
 - **Backend down.** Check `https://status.hivedeploy.in` (if we

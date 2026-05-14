@@ -1,0 +1,43 @@
+# hivedeploy
+
+> AI-orchestrated multi-cloud deployment. Domain-expert agents own the full lifecycle of each resource (Postgres, Kafka, frontend, etc.) — deploy, monitor, scale, tune.
+
+## Documentation
+
+- [Quickstart](https://docs.hivedeploy.in/quickstart): Sign up to deploying a real Postgres database to your cloud account in about 10 minutes.
+- [AI Orchestrator — Documentation](https://docs.hivedeploy.in/): Reference content for the docs site at docs.hivedeploy.in. Every doc fits one of four Diátaxis types.
+- [Security model — WIF isolation](https://docs.hivedeploy.in/concepts/security-wif): How the AI Orchestrator achieves per-org isolation at the cloud-trust boundary using Workload Identity Federation.
+- [Multi-cloud — why every agent supports AWS + GCP + Azure equally](https://docs.hivedeploy.in/concepts/multi-cloud): Understanding the multi-cloud-first principle and why we treat all three clouds as first-class targets.
+- [Gates — the deployment flow](https://docs.hivedeploy.in/concepts/gates): How every deployment session moves through six gates from intent to live resource.
+- [Architecture overview](https://docs.hivedeploy.in/concepts/architecture): High-level mental model of how the orchestrator works end to end, for technically-curious users.
+- [Agents](https://docs.hivedeploy.in/concepts/agents): Understanding how the agent system works — each agent is a specialist owning the full lifecycle of one technology.
+- [Connect a Google Cloud Project](https://docs.hivedeploy.in/connect-clouds/gcp): Connect a GCP project to the AI Orchestrator using Workload Identity Federation — keyless, no service account JSON required.
+- [Connect an Azure subscription](https://docs.hivedeploy.in/connect-clouds/azure): Connect an Azure subscription so the orchestrator can deploy resources into it using a Service Principal with client credentials.
+- [Connect an AWS account](https://docs.hivedeploy.in/connect-clouds/aws): Connect an AWS account so the orchestrator can deploy resources into it using cross-account IAM role with external ID.
+- [Invite teammates and manage roles](https://docs.hivedeploy.in/guides/team-management): Add members to your org, set their roles, and manage org-level settings.
+- [Self-host](https://docs.hivedeploy.in/guides/self-host): Run your own Hivedeploy orchestrator via docker-compose. For operators who need on-prem or air-gapped deployment.
+- [Notifications](https://docs.hivedeploy.in/guides/notifications): Configure how the orchestrator notifies you about events like deployments completing, approvals waiting, and cloud account issues.
+- [Billing & plans](https://docs.hivedeploy.in/guides/billing): Understand plan limits, upgrade flow, and usage tracking for the AI Orchestrator.
+- [Approvals workflow](https://docs.hivedeploy.in/guides/approvals): Configure deployments to require admin approval before risky changes apply.
+- [Webhooks & events](https://docs.hivedeploy.in/reference/webhooks): Notification events emitted by the orchestrator and the JSON shape of each delivery.
+- [Gate transitions](https://docs.hivedeploy.in/reference/gate-transitions): Complete state-machine reference for the deployment gate flow.
+- [Environment variables](https://docs.hivedeploy.in/reference/env-vars): Backend and frontend config knobs for self-hosted operators running their own orchestrator instance.
+- [REST API](https://docs.hivedeploy.in/reference/api): Programmatic access surface for the orchestrator — REST endpoints for everything the UI can do.
+- [Agents — full reference list](https://docs.hivedeploy.in/reference/agents-list): Exhaustive list of all ~140 specialist agents and what they provision, with status and supported clouds.
+- [Reading audit logs](https://docs.hivedeploy.in/troubleshooting/reading-audit-logs): How to use the orchestrator's audit log to debug deployments, cloud-account connects, and access events.
+- [Deployment stuck at a gate](https://docs.hivedeploy.in/troubleshooting/deployment-stuck): A deployment session won't advance, or seems frozen — common causes and fixes by gate.
+- [Common errors — searchable index](https://docs.hivedeploy.in/troubleshooting/common-errors): Alphabetical list of error messages from the orchestrator with fixes. Search with Cmd+F for any unique phrase.
+- [Cloud connect — 403 errors](https://docs.hivedeploy.in/troubleshooting/cloud-403): Symptom → cause → fix for the most common cloud-connect 403 failures across GCP, AWS, and Azure.
+- [vLLM agent](https://docs.hivedeploy.in/use-the-agents/vllm): How to use the vLLM specialist — GPU inference server deployment, model serving, continuous batching, HPA scaling, and observability.
+- [Qdrant agent](https://docs.hivedeploy.in/use-the-agents/qdrant): How to use the Qdrant specialist — vector cluster sizing, HNSW + quantization, hybrid search, snapshot backups, and recall monitoring.
+- [Python service agent](https://docs.hivedeploy.in/use-the-agents/python): How to use the Python specialist — web APIs, Lambda functions, background workers, Dockerfiles, and observability.
+- [Postgres agent](https://docs.hivedeploy.in/use-the-agents/postgres): How to use the Postgres specialist — what it deploys, sizing options, common patterns, and troubleshooting.
+- [Kafka agent](https://docs.hivedeploy.in/use-the-agents/kafka): How to use the Kafka specialist — what it deploys, sizing, topic design, operational runbooks, and troubleshooting.
+- [Frontend (static) agent](https://docs.hivedeploy.in/use-the-agents/frontend): How to use the frontend specialist — framework detection, S3 + CloudFront deploys, SSR on Fargate, cache policies, and troubleshooting.
+- [ArgoCD agent](https://docs.hivedeploy.in/use-the-agents/argocd): How to use the ArgoCD specialist — GitOps platform setup, HA install, app-of-apps pattern, RBAC, and Sealed Secrets.
+- [Adding a specialist agent](https://docs.hivedeploy.in/use-the-agents/adding-a-specialist): How to extend the orchestrator with a new specialist agent — directory structure, memory pack, IaC templates, mock script, scope guardrails, and tests.
+
+## Optional
+
+- [Changelog](https://docs.hivedeploy.in/changelog): Notable changes to the Hivedeploy platform, reverse-chronological.
+- [API reference (interactive)](https://docs.hivedeploy.in/reference/api-reference): Complete endpoint reference, generated from the live OpenAPI spec. Try requests directly from the page.
