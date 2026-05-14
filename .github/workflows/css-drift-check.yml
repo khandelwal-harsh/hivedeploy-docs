@@ -1,0 +1,58 @@
+name: globals.css drift check
+on:
+  schedule:
+    - cron: '0 9 * * MON'
+  workflow_dispatch:
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs repo
+        uses: actions/checkout@v4
+        with:
+          path: docs
+
+      - name: Checkout frontend repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/frontend-ai-orchestrator
+          path: frontend
+          token: ${{ secrets.FRONTEND_REPO_READ_TOKEN }}
+
+      - name: Compute date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Diff globals.css (strip LIGHT MODE block from docs copy)
+        id: diff
+        run: |
+          awk '/\/\* === LIGHT MODE ===/{exit} {print}' docs/styles/globals.css > docs/styles/globals.upstream-portion.css
+          if diff -u frontend/app/globals.css docs/styles/globals.upstream-portion.css > diff.txt; then
+            echo "drift=false" >> $GITHUB_OUTPUT
+          else
+            echo "drift=true" >> $GITHUB_OUTPUT
+            cat diff.txt
+          fi
+
+      - name: Sync upstream into docs
+        if: steps.diff.outputs.drift == 'true'
+        run: |
+          awk '/\/\* === LIGHT MODE ===/{found=1} found' docs/styles/globals.css > docs/styles/light-mode.css
+          cat frontend/app/globals.css docs/styles/light-mode.css > docs/styles/globals.css
+          rm docs/styles/globals.upstream-portion.css docs/styles/light-mode.css
+
+      - name: Open PR if drift
+        if: steps.diff.outputs.drift == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          path: docs
+          commit-message: 'chore: sync globals.css from frontend (${{ steps.date.outputs.date }})'
+          branch: chore/sync-globals-css-${{ steps.date.outputs.date }}
+          title: 'chore: sync globals.css from frontend (${{ steps.date.outputs.date }})'
+          body: |
+            Automated sync of `globals.css` from `frontend-ai-orchestrator`.
+
+            The LIGHT MODE block in this repo's copy was preserved.
+
+            Review and merge if intended; close if unwanted.
