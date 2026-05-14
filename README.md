@@ -41,6 +41,7 @@ pnpm dev          # http://localhost:3000
 
    Body content here.
    ```
+   Valid `diataxis` values: `tutorial` · `how-to` · `reference` · `explanation`. See the [Diátaxis framework](https://diataxis.fr/) for what each type means.
 2. Add entry to `pages/<section>/_meta.json` to control sidebar order.
 3. PR opens — Vercel posts a preview URL on the PR.
 
