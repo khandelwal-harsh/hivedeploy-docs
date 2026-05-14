@@ -3,4 +3,5 @@ export default {
   approvals: 'Approvals',
   notifications: 'Notifications',
   billing: 'Billing',
+  'self-host': 'Self-host',
 }
