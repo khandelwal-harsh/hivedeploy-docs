@@ -1,8 +1,3 @@
----
-title: Environment variables
-description: Backend and frontend config knobs for self-hosted operators running their own orchestrator instance.
-diataxis: reference
----
 
 import { Callout } from '../../components/Callout'
 

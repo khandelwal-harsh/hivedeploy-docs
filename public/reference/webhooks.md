@@ -1,0 +1,151 @@
+
+The orchestrator emits notifications on state changes (deployment lifecycle, cloud-account connect/disconnect, org membership, approvals). Each notification is fanned out across enabled channels: in-app banner, email, and (when configured) HTTP webhook to an URL of your choice.
+
+This page is the authoritative reference for event types, payload shape, and delivery semantics. For the in-app/email workflow, see [Guides: Notifications](/guides/notifications).
+
+## Event types
+
+Every event emitted by the orchestrator falls under one of these `event_type` values:
+
+### Deployment lifecycle
+
+| Event | Emitted when | Default severity |
+|---|---|---|
+| `session.created` | A new gated session starts | info |
+| `session.completed` | Session reaches gate 7 (done) | ok |
+| `session.failed` | Session terminated by an error before gate 7 | fail |
+| `deployment.created` | A deployment record is persisted at gate 5 review | info |
+| `deployment.approval_requested` | Admin approval needed at gate 5 | warn |
+| `deployment.approval_decided` | Approver approved or rejected | info |
+| `deployment.run_started` | `terraform apply` job dispatched | info |
+| `deployment.run_succeeded` | Apply completed successfully | ok |
+| `deployment.run_failed` | Apply failed (partial or full) | fail |
+
+### Cloud accounts
+
+| Event | Emitted when | Default severity |
+|---|---|---|
+| `cloud_account.connected` | A new cloud account passed probe and was saved | ok |
+| `cloud_account.disconnected` | A cloud account was removed | info |
+| `cloud_account.credentials_rotated` | Operator rotated credentials on an existing account | info |
+
+### Org membership
+
+| Event | Emitted when | Default severity |
+|---|---|---|
+| `org.invite_sent` | An admin invited a new member | info |
+| `org.invite_accepted` | An invitee accepted | ok |
+| `org.renamed` | Org display name changed | info |
+| `org.approval_required_toggled` | Org's approval-gate policy changed | warn |
+| `org.member_role_changed` | A member's role changed | info |
+| `org.member_removed` | A member was removed | warn |
+
+## Payload shape
+
+Every notification has the same envelope:
+
+```json
+{
+  "id": "ntfn_abc123",
+  "org_id": "org_xyz789",
+  "event_type": "deployment.run_succeeded",
+  "entity_type": "deployment",
+  "entity_id": "dep_456",
+  "actor_id": "user_def",
+  "actor_email": "alice@example.com",
+  "actor_name": "Alice",
+  "title": "Postgres deployment succeeded",
+  "body": "Cloud SQL instance staging-pg is live.",
+  "deep_link": "https://app.hivedeploy.in/deployments/dep_456",
+  "payload": {
+    "deployment_id": "dep_456",
+    "session_id": "ses_789",
+    "resource_kind": "postgres",
+    "cloud_provider": "gcp"
+  },
+  "created_at": "2026-05-13T14:23:45Z"
+}
+```
+
+### Field reference
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | string | Stable notification ID (`ntfn_…`) |
+| `org_id` | string | Tenant scope; matches the customer's org |
+| `event_type` | enum | One of the event types listed above |
+| `entity_type` | enum | One of: `session`, `deployment`, `approval_request`, `run`, `org`, `org_member`, `org_invite`, `cloud_account` |
+| `entity_id` | string | ID of the affected entity |
+| `actor_id` | string \| null | User who triggered the event (null for system-emitted) |
+| `actor_email` | string \| null | Email of actor (denormalized for display) |
+| `actor_name` | string \| null | Display name of actor |
+| `title` | string | Human-readable summary, suitable for a one-line banner |
+| `body` | string \| null | Optional longer description |
+| `deep_link` | string | URL into the in-app UI for the affected entity |
+| `payload` | object | Event-specific structured details (varies by `event_type`) |
+| `created_at` | ISO 8601 | UTC timestamp |
+
+The `payload` object's shape varies by event type — see the per-event section below for details. All other top-level fields have the same shape across all events.
+
+## Subscribing to webhooks
+
+Webhook delivery to an external HTTP endpoint is currently an admin-only feature. Configure via the `/settings/webhooks` page in the app (or `POST /api/webhooks` to the API). Each webhook subscription has:
+
+- A target URL (HTTPS only)
+- An optional filter on `event_type` (subscribe to all, or a subset)
+- A shared secret used for HMAC signing (see below)
+
+In-app and email channels are always-on for org members per their notification preferences (`/settings/notifications`).
+
+## Delivery semantics
+
+- **At-least-once delivery.** A webhook may be retried; ensure your receiver is idempotent (use `id` as the dedup key).
+- **Retries.** On 5xx responses or network error, the orchestrator retries with exponential backoff: 1s, 5s, 30s, 2min, 10min, 1h, 6h. After 7 failed attempts the event is marked permanently failed and surfaced in the audit log.
+- **4xx response** halts retries — the orchestrator treats 4xx as a permanent client misconfiguration and gives up.
+- **Timeout** per delivery attempt: 10 seconds.
+- **Ordering** is best-effort within an org but not guaranteed across orgs.
+
+## Signature verification
+
+When a webhook fires, the orchestrator includes an HMAC-SHA256 signature in the `X-Hivedeploy-Signature` header. The signing input is the raw request body; the key is your subscription's shared secret.
+
+Verify in Python:
+
+```python
+import hmac
+import hashlib
+
+def verify(body: bytes, signature_header: str, secret: str) -> bool:
+    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+```
+
+Verify in Node.js:
+
+```js
+import crypto from 'node:crypto'
+
+function verify(body, signatureHeader, secret) {
+  const expected = crypto.createHmac('sha256', secret).update(body).digest('hex')
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader))
+}
+```
+
+If the signature does not match, drop the request — it may be a replay or a spoofed payload.
+
+## Receiver best practices
+
+- Respond with `2xx` as soon as you've persisted the event; do real processing async. The orchestrator's 10s timeout will retry you if you process synchronously and exceed it.
+- Use `id` for idempotency. The same event can be delivered more than once.
+- Watch for unknown `event_type` values — new events are added over time. Treat unknowns as no-ops, don't crash.
+- The `payload` shape is event-specific; tolerate missing fields gracefully if you only handle a subset of events.
+
+## Audit trail
+
+Every webhook delivery attempt is recorded in the audit log with the request URL, response status, and retry count. See [Troubleshooting: Reading audit logs](/troubleshooting/reading-audit-logs).
+
+## See also
+
+- [Guides: Notifications](/guides/notifications) — in-app and email channels
+- [Reference: API](/reference/api) — for endpoints to manage webhook subscriptions
+- [Troubleshooting: Reading audit logs](/troubleshooting/reading-audit-logs)

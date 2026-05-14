@@ -1,8 +1,3 @@
----
-title: Deployment stuck at a gate
-description: A deployment session won't advance, or seems frozen — common causes and fixes by gate.
-diataxis: how-to
----
 
 import { Callout } from '../../components/Callout'
 

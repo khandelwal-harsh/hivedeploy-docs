@@ -1,0 +1,77 @@
+
+For the conceptual overview of what gates are and why they exist, see [Concepts: Gates](/concepts/gates). This page is the exhaustive reference: every state, every legal transition, and every blocker.
+
+## States
+
+The deployment flow is a 7-state machine. Every session and resulting deployment moves linearly through gates 1 → 7. Going back is allowed up to a point (see "Going back" below).
+
+| Gate | Name | What happens | Typical duration |
+|---|---|---|---|
+| **1** | Intent | Customer states what to deploy in natural language | Conversational |
+| **2** | Name | Pick a name + tags for the resource | Conversational |
+| **3** | Cloud target | Pick the cloud account and region | Conversational |
+| **4** | Sizing | Agent proposes a tier; customer confirms or adjusts | Conversational |
+| **5** | Review | Agent renders the Terraform plan; admin approves (if approvals required) | 1 min – several hours |
+| **6** | Deploy | `terraform apply` runs | 2–25 min (resource-dependent) |
+| **7** | Done | Resources live; agent enters monitor mode | Persistent |
+
+## Allowed transitions
+
+The agent advances gates when the user (or system) supplies the required input and validators pass.
+
+| From | To | Trigger | Allowed when |
+|---|---|---|---|
+| 1 | 2 | User confirms intent | Always — gate 1 always accepts |
+| 2 | 3 | Name provided | Name passes the kebab-case + uniqueness validator |
+| 3 | 4 | Cloud account picked | Cloud account is connected and the user has `deploy` permission on it |
+| 4 | 5 | Sizing confirmed | Tier is one of the agent's offered options |
+| 5 | 6 | "Looks good" + approval (if required) | If org requires approvals: an admin who is NOT the requester clicks Approve. Otherwise: skip the approval step |
+| 6 | 7 | Apply succeeds | All resources created without error |
+
+## Going back
+
+Users can revise an earlier gate by typing `go back` or `revise gate N`.
+
+| From | To (back) | Allowed | Side effect |
+|---|---|---|---|
+| 2 | 1 | Always | Clears the name |
+| 3 | 1 or 2 | Always | Clears cloud + name selections downstream |
+| 4 | 1, 2, or 3 | Always | Clears sizing + downstream |
+| 5 | 1, 2, 3, or 4 | Always (before approval) | Clears plan + downstream; if approval was already given, re-request needed |
+| 5 | 1–4 | Blocked after gate 6 starts | Apply may have begun; use `destroy` or `roll back` instead |
+| 6 | 5 | Blocked once apply starts | Apply is partially destructive — use `roll back this deployment` instead |
+| 7 | any | Use `destroy` | Resources are live; you can't "go back" past gate 7. Run `destroy this deployment` to wind down |
+
+## Forbidden transitions
+
+The orchestrator refuses these — they are unsafe.
+
+| Attempted | Why blocked |
+|---|---|
+| 5 → 6 without admin approval (org has approvals enabled) | Approval policy enforcement |
+| Self-approving gate 5 (requester also tries to approve) | An admin who is not the requester must approve |
+| 6 → 5 once `terraform apply` has started | Apply mutates cloud state; you cannot rewind. Roll back or destroy instead |
+| 7 → 5 or 6 | Once gate 7 is reached, the path forward is destroy + re-create |
+
+## Reverting from gate 6
+
+After `terraform apply` has started, the orchestrator no longer permits "go back." The available options are:
+
+- **Roll back** (`roll back this deployment`) — agent runs `terraform destroy` against the partial state. Best when apply errored mid-way.
+- **Retry** (`retry apply`) — agent re-runs `terraform apply` against the existing state. Use when the failure is transient (e.g., a cloud-side rate limit).
+- **Destroy** (`destroy this deployment`) — full teardown of all resources. Use when you want to start over from gate 1.
+
+## Idempotency
+
+Each gate transition is idempotent — re-sending the same advance message produces the same state, not a duplicate transition. The agent's response will reaffirm the current gate rather than advance twice.
+
+## Audit trail
+
+Every gate transition emits an audit row (`deployment.gate_advanced` or equivalent). See [Troubleshooting: Reading audit logs](/troubleshooting/reading-audit-logs) for how to query them.
+
+## See also
+
+- [Concepts: Gates](/concepts/gates) — conceptual overview
+- [Guides: Approvals](/guides/approvals) — admin approval workflow for gate 5
+- [Troubleshooting: Deployment stuck at a gate](/troubleshooting/deployment-stuck)
+- [Reference: Webhooks & events](/reference/webhooks)

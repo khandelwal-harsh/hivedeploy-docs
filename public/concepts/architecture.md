@@ -1,8 +1,3 @@
----
-title: Architecture overview
-description: High-level mental model of how the orchestrator works end to end, for technically-curious users.
-diataxis: explanation
----
 
 import { Callout } from '../../components/Callout'
 

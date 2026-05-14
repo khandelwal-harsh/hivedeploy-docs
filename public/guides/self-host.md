@@ -1,8 +1,3 @@
----
-title: Self-host
-description: Run your own Hivedeploy orchestrator via docker-compose. For operators who need on-prem or air-gapped deployment.
-diataxis: how-to
----
 
 > SaaS users can skip this page entirely — we host everything for you at `app.hivedeploy.in`.
 > This guide is only for operators who want to run the orchestrator on their own infrastructure.

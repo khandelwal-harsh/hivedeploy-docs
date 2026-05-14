@@ -1,0 +1,182 @@
+
+import { Callout } from '../../components/Callout'
+
+The orchestrator can pause any deployment at a configurable gate
+until an approver clicks "Approve". This is how teams enforce
+change-control for production deployments.
+
+## When you'd want this
+
+- Production deployments need a second pair of eyes
+- Compliance requires "separation of duties" — the person making
+  the change can't also approve it
+- Large cost increases (e.g., bumping a Postgres tier from $185/mo
+  to $1,800/mo) need finance / leadership review
+- You're an Admin building shared infrastructure and want explicit
+  green-light from another Admin before risky terraform applies
+
+## How it works
+
+When approvals are enabled, deployment sessions pause at the
+configured gate (usually Gate 5 — Review). The session UI shows a
+"Waiting for approval" banner. An eligible approver gets:
+
+- In-app notification
+- Optional email (configurable per-user)
+- Optional Slack notification (configurable per-org, via webhook)
+
+They open the session, review the plan, and click **Approve** or
+**Reject** with a free-text reason.
+
+- **Approved** → deployment continues to Gate 6 (apply)
+- **Rejected** → deployment ends; no resources created; rejection
+  reason recorded in audit log
+
+## Configure approval policies
+
+`/settings → Approvals` (Owners + Admins only).
+
+Three policy modes:
+
+### Mode 1: No approvals (default)
+
+Every deployment runs end-to-end without pausing. Suitable for
+solo accounts and dev environments.
+
+### Mode 2: All deployments require approval
+
+Every deployment pauses at the configured gate. Picks one gate:
+
+- **Gate 3 (infra target)** — paranoid; even cloud/region picks
+  need approval
+- **Gate 5 (review)** — typical; approve the actual Terraform plan
+  before apply
+- **Gate 6 (deploy)** — last-second; approves the apply itself
+
+Recommended: Gate 5. Approvers see the resource list and cost
+estimate, but the plan isn't yet running against your cloud.
+
+### Mode 3: Tag-based — only certain deployments need approval
+
+Sessions can be labeled (`env=prod`, `team=billing`, etc.). The
+policy targets only sessions matching specific labels:
+
+- `env=prod` → require Gate 5 approval
+- `env=staging` → no approval needed
+
+Labels are set at Gate 1 (intent) by the user, or auto-applied based
+on rules you configure (e.g., "any deployment to the `prod-aws`
+cloud account is auto-labeled `env=prod`").
+
+## Who can approve
+
+By default, any **Admin** in the org can approve. You can scope this
+further in `/settings → Approvals → Approver groups`:
+
+- **All Admins** — default
+- **Specific Admins only** — pick from your member list
+- **Owner-only** — for highest-risk changes
+
+A member can NOT approve their own deployment. Even if they're the
+only Admin in the approver group, they need to wait for another
+Admin (or the Owner) to click Approve.
+
+## Approver UI
+
+When you have a pending approval, your in-app notification feed
+shows it. Clicking it opens the session at the pause gate. The UI
+shows:
+
+- The full chat history leading to this gate
+- The proposed plan summary (Gate 5) or scope (earlier gates)
+- The Terraform plan (downloadable as text for offline review)
+- Cost estimate
+- Two big buttons: **Approve** / **Reject**, each with a required
+  free-text reason
+
+After approving, the requester's session unblocks automatically
+within ~5 seconds.
+
+## Audit trail
+
+Every approval / rejection is logged:
+
+```
+audit_events:
+  action=deployment.approved
+  actor=admin@acme.com
+  target=deployment-456 (postgres-prod)
+  payload={reason: "Reviewed plan; cost +$210/mo expected", gate: 5}
+  outcome=success
+  severity=notice
+```
+
+Filterable in `/audit`. Useful for compliance reviews — "show me
+who approved every prod deployment in Q3".
+
+## Notifications for approvers
+
+By default, all eligible approvers get an **in-app notification**
+when a session needs their attention.
+
+Each approver can opt into / out of:
+
+- **Email digest** — once per N minutes (default 5 min) summarizing
+  pending approvals
+- **Email per-request** — every new pending approval triggers an
+  immediate email
+- **Slack** — if your org has a Slack webhook configured
+  (`/settings → Integrations → Slack`)
+
+Per-user toggles in `/settings → Notifications`.
+
+## SLA expectations
+
+The orchestrator doesn't enforce an approval SLA, but you can
+configure one:
+
+- **Auto-reject if no decision within N hours** — deployment ends,
+  requester can retry
+- **Escalate to Owner after N hours** — additional notification
+- **Notify in #ops Slack after N hours** — broader visibility
+
+Use these to prevent stuck deployments. Default: no SLA — sessions
+wait indefinitely.
+
+## Best practices
+
+- **Require approval at Gate 5 for `env=prod`.** That's the
+  industry standard — review the plan, approve, then apply. Don't
+  approve at Gate 3 (too early; cost not yet known) or Gate 6 (too
+  late; apply already running).
+- **Keep the approver group small** — 2-5 people. Too many and
+  diffusion of responsibility kicks in.
+- **Require reasons.** The audit log is much more useful with
+  "Approved because we already tested in staging" than empty
+  approvals.
+- **Review the audit monthly.** Are approvals being rubber-stamped?
+  Are rejections coming with useful learnings? Tune the policy.
+
+## Limitations
+
+- Approvals are session-level, not change-level. If a session has
+  multiple gate-6 applies (rare but possible — e.g., re-apply after
+  a partial failure), only the first one waits for approval. The
+  re-apply doesn't.
+- Approvers see the same gate data the requester does — the
+  orchestrator doesn't synthesize a "change risk score" yet (on the
+  roadmap).
+- The orchestrator can't enforce approval at the **cloud-API level**
+  — if an admin bypasses by running `terraform apply` directly
+  against the cloud (outside the orchestrator), no approval is
+  recorded. Best mitigation: keep cloud IAM permissions narrow
+  enough that direct cloud access requires extra steps.
+
+## See also
+
+- [Concepts — Gates](/concepts/gates) — the gates approvals
+  attach to
+- [Team management](/guides/team-management) — who has Admin / approver
+  role
+- [Notifications](/guides/notifications) — control how approvers get
+  notified

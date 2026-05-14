@@ -1,8 +1,3 @@
----
-title: Adding a specialist agent
-description: How to extend the orchestrator with a new specialist agent — directory structure, memory pack, IaC templates, mock script, scope guardrails, and tests.
-diataxis: how-to
----
 
 import { Callout } from '../../components/Callout'
 
@@ -110,9 +105,7 @@ AGENT = Agent(
 )
 ```
 
-<Callout type="warning">
-  Template `id` values **must** match the IDs in the frontend mock seed (`frontend-ai-orchestrator/lib/mock/seed/agents.ts`). Mismatches cause the mock UI to display blank cards.
-</Callout>
+> **Warning:** Template `id` values **must** match the IDs in the frontend mock seed (`frontend-ai-orchestrator/lib/mock/seed/agents.ts`). Mismatches cause the mock UI to display blank cards.
 
 ## Step 4 — Declare `PROVISIONS` and add scope guardrails
 

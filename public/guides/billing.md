@@ -1,20 +1,15 @@
----
-title: Billing & plans
-description: Understand plan limits, upgrade flow, and usage tracking for the AI Orchestrator.
-diataxis: how-to
----
 
 import { Callout } from '../../components/Callout'
 
 The orchestrator has three tiers plus Enterprise. Each tier has
 fixed limits on seats, active agents, and monthly LLM credits.
 
-<Callout type="info">(May 2026): the platform is mid-migration from Stripe to
+> **Note:** (May 2026): the platform is mid-migration from Stripe to
 an alternative payment provider. The in-app billing surface is
 behind a feature flag (`PAYMENT_PROVIDER=none` while we migrate).
 Plans are real and tracked; checkout / upgrade is currently
 handled via support email — automation returns when migration
-completes.</Callout>
+completes.
 
 ## Plans at a glance
 

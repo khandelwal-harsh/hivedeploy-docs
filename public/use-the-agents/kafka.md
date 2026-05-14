@@ -1,0 +1,130 @@
+
+import { Callout } from '../../components/Callout'
+
+> The Kafka agent owns the full lifecycle of an Apache Kafka cluster: initial deploy, topic creation, ACL management, partition rebalancing, consumer-lag triage, broker scaling, and storage growth — on AWS, GCP, and Azure, both self-managed and managed service flavors.
+
+## What it deploys
+
+| Topology | Best for | Clouds |
+|---|---|---|
+| **Strimzi on EKS (KRaft)** | K8s-native, open-source | AWS |
+| **Strimzi on GKE (KRaft)** | K8s-native, open-source | GCP |
+| **Strimzi on AKS (KRaft)** | K8s-native, open-source | Azure |
+| **AWS MSK** | Managed, minimal ops | AWS |
+| **Azure Event Hubs (Kafka API)** | Managed on Azure | Azure |
+| **Confluent Cloud** | Fully managed, multi-cloud | AWS, GCP, Azure |
+
+All self-managed topologies use **KRaft mode** (no ZooKeeper). All topologies default to:
+- Replication factor 3, `min.insync.replicas = 2`
+- `auto.create.topics.enable = false` (topics must be declared)
+- `unclean.leader.election.enable = false` (durability over availability)
+- Prometheus JMX exporter + ServiceMonitor for metrics
+
+> **Note:** Azure Event Hubs does not support Kafka Streams, log compaction, or custom partition reassignment. The agent surfaces these limitations before you commit.
+
+## Quickstart
+
+A minimal happy-path for a production Strimzi cluster on EKS:
+
+1. **Start the agent:** "Deploy a Kafka cluster for our event pipeline on AWS."
+2. **Gate 1 — workload inputs:** Agent asks for peak ingress MB/s, retention window, consumer group count, and estimated partition count. Reply with your numbers.
+3. **Gate 2 — topology:** Agent proposes Strimzi on EKS with KRaft, 3 brokers + 3 controllers. Confirm.
+4. **Gate 3 — sizing:** Agent proposes `m5.2xlarge` brokers (8 vCPU, 32 GB RAM, 1 TB gp3, 16 GB heap) for a standard workload. Confirm or adjust.
+5. **Gate 4 — topic design:** Agent walks through `replication.factor`, partition count per topic, and retention settings. Approve.
+6. **Gate 5 — review:** Agent renders the Terraform plan (EKS cluster, Strimzi Helm release, KafkaNodePool CRDs). Admin approves if enabled.
+7. **Gate 6 — deploy:** `terraform apply` runs. ~12 minutes for a fresh EKS cluster + Strimzi operator.
+
+After deploy the agent outputs:
+- `bootstrap_servers` endpoint (e.g. `kafka-prod-kafka-bootstrap.kafka.svc:9092`)
+- SCRAM-SHA-512 credentials for producer / consumer service accounts
+- Grafana dashboard URL (if Prometheus stack is present)
+
+## Configuration options
+
+| Option | Default | Description |
+|---|---|---|
+| `broker_count` | `3` | Number of broker nodes |
+| `controller_count` | `3` | KRaft controller nodes (always odd) |
+| `kafka_version` | `4.2.0` | Kafka version |
+| `replication_factor` | `3` | Default RF for all topics |
+| `min_insync_replicas` | `2` | Producer `acks=all` requires this many ISR |
+| `broker_storage_gb` | `1024` | Disk per broker (gp3 on AWS, pd-ssd on GCP, Premium SSD v2 on Azure) |
+
+### Broker sizing reference
+
+| Workload | AWS brokers | GCP brokers | Azure brokers | JVM heap | Storage |
+|---|---|---|---|---|---|
+| Small (< 10 MB/s) | `m5.large` | `n2-standard-2` | `Standard_D2s_v3` | 4 GB | 200 GB |
+| Standard (< 100 MB/s) | `m5.2xlarge` | `n2-standard-8` | `Standard_D8s_v3` | 16 GB | 1 TB |
+| Heavy (< 500 MB/s) | `m5.4xlarge` | `n2-standard-16` | `Standard_D16s_v3` | 24 GB | 2 TB |
+| Hyper (> 500 MB/s) | `i3en.2xlarge` | `n2-highmem-16` | `Standard_L8s_v3` | 32 GB max | NVMe local |
+
+> **Warning:** Never set JVM heap above 32 GB. Beyond that, JVM compressed-OOPs is disabled and overhead dominates. The other half of RAM serves the OS page cache, which Kafka relies on heavily for read performance.
+
+### Partition count guidance
+
+| Topic class | Partitions | Rule of thumb |
+|---|---|---|
+| High-throughput events | `ceil(peak_MB_per_sec / 10)`, rounded up to power of 2 | Each partition handles ~10 MB/s comfortably |
+| Medium-throughput (transactions, orders) | 12–24 | Balances parallelism and overhead |
+| Low-throughput (config, lookups) | 1–3 | Avoid partition explosion |
+| Compacted (CDC, state) | Match consumer parallelism | Compaction overhead grows with partition count |
+
+## Common patterns
+
+### Adding topics
+
+Tell the agent: "Create a `user-events` topic with 24 partitions, 7-day retention."
+
+For Strimzi, the agent applies a `KafkaTopic` CR. For MSK/Event Hubs, it uses the Admin API. You do not need to create topics manually.
+
+### Granting consumer / producer access
+
+Tell the agent: "Grant the `payments` service read access to the `transactions` topic."
+
+The agent audits existing ACLs, confirms the principal and operation, and applies via `grant_acl`. Wildcard grants on `*` resources are blocked at the policy level.
+
+### Scaling out brokers
+
+Tell the agent: "Our CPU headroom on brokers is down to 25%, we need more capacity."
+
+The agent:
+1. Verifies the cluster is healthy (zero under-replicated partitions)
+2. Proposes the new broker count and estimates cost
+3. After approval, increments `KafkaNodePool.spec.replicas`
+4. Triggers a Cruise Control rebalance to move partitions to the new brokers
+5. Monitors until `get_rebalance_status = Ready`
+
+### Retention and config changes
+
+Topic config changes (retention, compression, segment size) apply immediately via the AdminClient — no broker restart needed.
+
+## Operational tasks
+
+| Signal | Automated response |
+|---|---|
+| Consumer group lag > 100k messages | Diagnoses skewed vs even lag; proposes consumer scale-out or offset reset (with confirmation) |
+| Under-replicated partitions > 0 | Identifies which broker is lagging; blocks rebalance until resolved |
+| Broker disk > 75% | Proposes `propose_grow_storage`; agent will not do a rebalance while disk is critical |
+| Broker CPU > 70% sustained 1 hour | Proposes scale-out plan |
+| Hot partition (all lag on one partition) | Proposes re-keying the producer or Cruise Control partition move |
+
+Kafka brokers **do not autoscale automatically**. Adding brokers requires partition reassignment (Cruise Control). Plan for 30% headroom.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `NOT_LEADER_OR_FOLLOWER` errors | Partition leader in flux during rebalance | Wait for rebalance to complete; check URP metric |
+| Consumer lag growing despite healthy consumers | Producer throughput spike; consumers undersized | Ask agent to scale consumer replicas (outside Kafka scope, but advised) |
+| URP > 0 persists after broker recovery | Log segment blocking ISR sync (`log.retention.bytes` vs disk) | Check disk usage; agent will propose grow or purge |
+| `kafka_versions` mismatch error on MSK apply | `aws_msk_configuration.kafka_versions` must be a substring like `["3.7.x"]`, not `["3.7.1"]` | Agent auto-corrects this; re-run apply |
+| Strimzi operator CRD not ready | `kubernetes_manifest` ran before Helm CRDs installed | Agent enforces `depends_on = [helm_release.strimzi]`; re-run plan |
+| Event Hubs 1 MB message size limit hit | Hard platform cap — no workaround | Split payload or switch to Strimzi |
+| `auto.offset.reset` unexpected replay | Consumer group has no committed offsets | Set `auto.offset.reset = latest` for new groups in non-critical paths |
+
+## See also
+
+- [Concepts: Agents](/concepts/agents)
+- [Concepts: Gates](/concepts/gates)
+- [Reference: Agents list](/reference/agents-list)
