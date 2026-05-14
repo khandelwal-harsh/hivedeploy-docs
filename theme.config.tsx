@@ -1,5 +1,7 @@
+import type { FC } from 'react'
 import type { DocsThemeConfig } from 'nextra-theme-docs'
 import { Callout } from './components/Callout'
+import { DiataxisBadge } from './components/DiataxisBadge'
 
 const config: DocsThemeConfig = {
   logo: <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>hivedeploy / docs</span>,
@@ -11,13 +13,11 @@ const config: DocsThemeConfig = {
     content: <span>© {new Date().getFullYear()} Hivedeploy</span>,
   },
   components: {
-    Callout,
+    Callout: Callout as FC,
+    DiataxisBadge: DiataxisBadge as FC,
   },
   darkMode: true,
   nextThemes: { defaultTheme: 'dark' },
-  useNextSeoProps() {
-    return { titleTemplate: '%s | Hivedeploy docs' }
-  },
   head: (
     <>
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
