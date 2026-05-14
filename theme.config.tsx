@@ -1,4 +1,5 @@
 import type { DocsThemeConfig } from 'nextra-theme-docs'
+import { Callout } from './components/Callout'
 
 const config: DocsThemeConfig = {
   logo: <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>hivedeploy / docs</span>,
@@ -8,6 +9,9 @@ const config: DocsThemeConfig = {
   docsRepositoryBase: 'https://github.com/khandelwal-harsh/hivedeploy-docs/blob/main',
   footer: {
     content: <span>© {new Date().getFullYear()} Hivedeploy</span>,
+  },
+  components: {
+    Callout,
   },
   darkMode: true,
   nextThemes: { defaultTheme: 'dark' },
