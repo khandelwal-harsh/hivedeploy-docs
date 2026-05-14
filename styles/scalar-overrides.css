@@ -1,0 +1,21 @@
+.scalar-app {
+  --scalar-background-1: var(--background);
+  --scalar-background-2: var(--surface-1);
+  --scalar-background-3: var(--surface-2);
+  --scalar-background-accent: var(--surface-3);
+  --scalar-border-color: var(--border);
+  --scalar-color-1: var(--foreground-strong);
+  --scalar-color-2: var(--foreground);
+  --scalar-color-3: var(--foreground-muted);
+  --scalar-color-disabled: var(--foreground-faint);
+  --scalar-color-accent: var(--info);
+  --scalar-color-green: var(--ok);
+  --scalar-color-red: var(--fail);
+  --scalar-color-yellow: var(--warn);
+  --scalar-color-blue: var(--info);
+  --scalar-font: var(--font-sans);
+  --scalar-font-code: var(--font-mono);
+  --scalar-radius: 0.375rem;
+  --scalar-radius-lg: 0.75rem;
+  --scalar-radius-xl: 1rem;
+}

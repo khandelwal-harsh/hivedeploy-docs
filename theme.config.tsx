@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import { Callout } from './components/Callout'
 import { DiataxisBadge } from './components/DiataxisBadge'
 import { FeedbackWidget } from './components/FeedbackWidget'
+import { ScalarReference } from './components/ScalarReference'
 
 function Head() {
   const router = useRouter()
@@ -44,6 +45,7 @@ const config: DocsThemeConfig = {
   components: {
     Callout: Callout as FC,
     DiataxisBadge: DiataxisBadge as FC,
+    ScalarReference: ScalarReference as FC,
   },
   main: (({ children }: { children: ReactNode }) => (
     <>
