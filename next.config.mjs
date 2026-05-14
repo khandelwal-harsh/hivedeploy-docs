@@ -9,23 +9,38 @@ const withNextra = nextra({
   defaultShowCopyCode: true,
 })
 
-const securityHeaders = [
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-  {
-    key: 'Content-Security-Policy',
-    value: [
+const isProd = process.env.NODE_ENV === 'production'
+
+// Production CSP — tight. Dev mode needs unsafe-eval for React refresh and
+// inline scripts for hot reload, so we relax the script-src / style-src
+// directives there.
+const csp = isProd
+  ? [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' va.vercel-scripts.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https://*.vercel-storage.com",
       "connect-src 'self' vitals.vercel-insights.com",
       "frame-ancestors 'none'",
-    ].join('; '),
-  },
+    ].join('; ')
+  : [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' va.vercel-scripts.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.vercel-storage.com",
+      "connect-src 'self' ws: wss: vitals.vercel-insights.com",
+      "frame-ancestors 'none'",
+    ].join('; ')
+
+const securityHeaders = [
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  ...(isProd
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
+    : []),
+  { key: 'Content-Security-Policy', value: csp },
 ]
 
 /** @type {import('next').NextConfig} */
