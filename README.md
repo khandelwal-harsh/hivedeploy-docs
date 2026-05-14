@@ -47,7 +47,9 @@ pnpm dev          # http://localhost:3000
 
 ## Deploy
 
-Auto-deployed by Vercel on push to `main`. See `docs/DEPLOY.md` (filled in during Task 25).
+Auto-deployed by Vercel on push to `main`. For the one-time setup
+(Vercel project, Cloudflare DNS, environment variables, GitHub secrets),
+see [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## License
 
