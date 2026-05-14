@@ -72,11 +72,15 @@ body {
   color: var(--foreground);
 }
 /* === LIGHT MODE === added for hivedeploy-docs site ===
-   nextra-theme-docs uses next-themes which adds class="light" (or "dark")
-   on <html>. We override the dark :root tokens by targeting .light. Also
-   override --surface-4/--hover (used by Nextra chrome) so prose, code
-   blocks, sidebar hover, and tables flip too. */
-:where(html.light, .light, [data-theme='light']) {
+   nextra-theme-docs uses next-themes which toggles class="light"/"dark"
+   on <html>. The dark values above are scoped to `:root, .dark` (spec
+   0,1,0 each). To beat that, our light overrides target html.light /
+   html:not(.dark) so they have specificity (0,2,0) and (0,2,0), winning
+   the cascade whenever dark isn't active. */
+html.light,
+html:not(.dark),
+.light,
+[data-theme='light'] {
   --background: #fafafa;
   --surface-1: #ffffff;
   --surface-2: #f4f4f5;
@@ -94,12 +98,13 @@ body {
   --warn: #ca8a04;
   --fail: #dc2626;
   --ai: #7c3aed;
+  color-scheme: light;
 }
 
-/* Higher-specificity override of `:root, .dark { ... }` defaults — the
-   :root selector is (0,1,0) same as .light so source order wins; this
-   stub guarantees no future cascading surprise. */
-html.light :root,
-html.light {
-  color-scheme: light;
+/* Re-assert dark when next-themes has set the class — needs to override
+   the html:not(.dark) light rule above. Specificity (0,1,0) is not enough
+   on its own; we use html.dark (0,2,0) so it ties source-order-wise but
+   wins because it's after, and definitively beats html.light. */
+html.dark {
+  color-scheme: dark;
 }
