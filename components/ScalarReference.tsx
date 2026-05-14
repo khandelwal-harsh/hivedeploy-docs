@@ -2,7 +2,6 @@
 
 import { ApiReferenceReact } from '@scalar/api-reference-react'
 import '@scalar/api-reference-react/style.css'
-import '../styles/scalar-overrides.css'
 
 export function ScalarReference() {
   return (

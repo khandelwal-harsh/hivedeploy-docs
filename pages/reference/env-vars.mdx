@@ -1,0 +1,134 @@
+---
+title: Environment variables
+description: Backend and frontend config knobs for self-hosted operators running their own orchestrator instance.
+diataxis: reference
+---
+
+import { Callout } from '../../components/Callout'
+
+This is mainly for operators running their own orchestrator instance.
+SaaS users don't need to set any of these — we configure them on
+your behalf.
+
+## Backend (`backend-ai-orchestrator/.env`)
+
+### Required
+
+| Var | Description |
+|---|---|
+| `DATABASE_URL` | Postgres connection string. `postgresql+asyncpg://user:pass@host:5432/db` |
+| `REDIS_URL` | Redis URL. `redis://host:6379/0` |
+| `MONGO_URL` | MongoDB URL with auth. `mongodb://admin:pw@host:27017/dbname?authSource=admin` |
+| `MONGO_DB` | Default Mongo database name |
+| `JWT_SECRET` | HS256 secret for API auth JWTs. **Min 32 bytes.** Generate via `openssl rand -hex 32`. |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude calls |
+
+### Environment / mode
+
+| Var | Default | Description |
+|---|---|---|
+| `ENV` | `local` | One of `local`, `staging`, `production`. Production triggers strict startup validators (KMS required for OIDC, etc.) |
+| `APP_BASE_URL` | `http://localhost:3000` | Frontend URL used in verification email links, Stripe redirects |
+| `FRONTEND_URL` | `http://localhost:3000` | Same as above; legacy duplicate (will be consolidated) |
+| `ALLOWED_ORIGINS` | `https://app.hivedeploy.in,http://localhost:3000` | CORS allow-list for the frontend |
+
+### Cloud provider credentials (orchestrator's own GCP identity)
+
+For Stripe Atlas / KMS-protected signing key (production):
+
+| Var | Description |
+|---|---|
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to GCP SA key JSON inside the container (mounted via Docker volume) |
+
+### OIDC issuer (for cloud WIF — see [Connect GCP](/connect-clouds/gcp))
+
+| Var | Default | Description |
+|---|---|---|
+| `GCP_WIF_ISSUER_ENABLED` | `false` | Feature flag — enable to start serving `/.well-known/*` endpoints |
+| `JWT_ISSUER_URL` | `""` | Public HTTPS URL where customers point their WIF provider. Must match `APP_BASE_URL` semantically |
+| `JWT_ISSUER_KMS_KEY` | `""` | Production: full GCP KMS resource name (`projects/.../cryptoKeyVersions/N`). HSM-protected signing |
+| `JWT_ISSUER_PRIVATE_KEY` | `""` | Dev/staging only: full RSA PEM as env value (multi-line; quote in `.env`) |
+| `JWT_ISSUER_PRIVATE_KEY_PATH` | `""` | Dev/staging alternative: filesystem path to PEM file |
+| `OIDC_KEY_DIR` | `var/oidc-keys` | Where `LocalFileKeyProvider` writes auto-generated dev keys |
+| `JWT_ISSUER_TOKEN_TTL_SECONDS` | `300` | JWT TTL (5 min default; matches GitHub Actions) |
+| `KEY_ROTATION_DAYS` | `30` | Signing key rotation cadence |
+| `KEY_OVERLAP_DAYS` | `7` | How long retired keys stay in JWKS after rotation |
+
+### JWT (API auth)
+
+| Var | Default | Description |
+|---|---|---|
+| `JWT_ISSUER` | `ai-orchestrator` | `iss` claim value on user-auth JWTs |
+
+### Billing / payment provider
+
+| Var | Default | Description |
+|---|---|---|
+| `PAYMENT_PROVIDER` | `stripe` | One of `stripe`, `none`, or future `lemonsqueezy`. `none` skips Stripe validators (used during migration) |
+| `STRIPE_API_KEY` | `""` | `sk_live_*` or `sk_test_*`. Required if `PAYMENT_PROVIDER=stripe` |
+| `STRIPE_WEBHOOK_SECRET` | `""` | Webhook signing secret (`whsec_*`). Required if `PAYMENT_PROVIDER=stripe` |
+| `STRIPE_MOCK_MODE` | `false` | Local-dev only. Returns mock checkout URLs. **Hard-fails in production** |
+| `PLAN_PICKER_ENABLED` | `false` | Show the post-verification plan picker on signup |
+| `BILLING_OVERAGE_MARKUP_DEFAULT` | `1.40` | Markup multiplier for credit-usage above included budget |
+
+### Auth & signup
+
+| Var | Default | Description |
+|---|---|---|
+| `SIGNUP_MODE` | `invite_only` | One of `open`, `invite_only`, `waitlist` |
+| `TURNSTILE_SITE_KEY` | `""` | Cloudflare Turnstile public site key (frontend uses this) |
+| `TURNSTILE_SECRET_KEY` | `""` | Cloudflare Turnstile secret key (backend uses this to verify) |
+
+### Email (verification, password reset, notifications)
+
+| Var | Description |
+|---|---|
+| `RESEND_API_KEY` | Resend.com API key |
+| `EMAIL_FROM` | `from:` address (e.g., `no-reply@hivedeploy.in`) |
+
+### Notifications + retention
+
+| Var | Default | Description |
+|---|---|---|
+| `NOTIFICATIONS_RETENTION_DAYS` | `90` | How long in-app notifications persist |
+
+### Celery
+
+| Var | Default | Description |
+|---|---|---|
+| `CELERY_BROKER_URL` | (falls back to `REDIS_URL`) | Override if you want a separate broker |
+
+## Frontend (`frontend-ai-orchestrator/.env.local`)
+
+| Var | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend URL the frontend talks to (e.g., `https://backend.hivedeploy.in` or `http://localhost:8000` for dev) |
+
+That's it. The frontend reads its other config (Turnstile key,
+signup mode, OAuth toggles) from `/api/config/public` at runtime —
+no env-var coupling beyond `NEXT_PUBLIC_API_URL`.
+
+## Validator behavior
+
+The backend's startup validator (`app/domains/billing/startup_validation.py`)
+checks:
+
+- `validate_billing_config(settings)` — gated by `PAYMENT_PROVIDER`.
+  When `stripe`, enforces all the Stripe-specific config. When `none`
+  or any other value, skips entirely.
+- `validate_oidc_issuer_config(settings)` — gated by
+  `GCP_WIF_ISSUER_ENABLED`. When `true`, in production requires
+  `JWT_ISSUER_URL` (https), `JWT_ISSUER_KMS_KEY`, and rejects local
+  PEM env vars.
+
+Both raise `ConfigurationError` in production to prevent boots with
+broken config. In dev / staging, they log warnings and continue.
+
+## See also
+
+- [Connect GCP](/connect-clouds/gcp) — uses several of the OIDC
+  issuer vars
+- [Billing & plans](/guides/billing) — the `PAYMENT_PROVIDER`
+  migration context
+- [Architecture overview](/concepts/architecture) — how the
+  various subsystems wire together
