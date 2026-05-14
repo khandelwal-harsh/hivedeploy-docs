@@ -1,0 +1,29 @@
+name: External link audit
+on:
+  schedule:
+    - cron: '0 10 * * MON'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit external links in MDX source
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: |
+            --no-progress
+            --max-retries 2
+            --retry-wait-time 5
+            --exclude-path pages/changelog
+            './pages/**/*.mdx'
+          fail: false
+          output: lychee-out.md
+      - name: Create issue on failure
+        if: failure()
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: 'External link audit found dead links (${{ github.run_id }})'
+          content-filepath: lychee-out.md
+          labels: docs, automated, link-audit

@@ -1,0 +1,35 @@
+name: PR checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Build (without prebuild — OpenAPI snapshot needs network)
+        run: pnpm next build
+        env:
+          OPENAPI_SOURCE_URL: file://${{ github.workspace }}/public/openapi.example.json
+      - name: Internal link audit against MDX source
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: |
+            --base pages
+            --offline
+            --no-progress
+            --include-fragments
+            './pages/**/*.mdx'
+          fail: true
