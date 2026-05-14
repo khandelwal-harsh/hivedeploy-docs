@@ -21,29 +21,30 @@
     "css-drift": "tsx scripts/check-css-drift.ts"
   },
   "dependencies": {
+    "@mdx-js/react": "^3.1.1",
+    "@scalar/api-reference-react": "0.3.166",
+    "@vercel/analytics": "1.3.1",
+    "@vercel/og": "0.6.3",
+    "glob": "10.4.5",
+    "gray-matter": "4.0.3",
+    "lucide-react": "0.412.0",
     "next": "14.2.5",
     "nextra": "^3",
     "nextra-theme-docs": "^3",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@scalar/api-reference-react": "0.3.166",
-    "@vercel/og": "0.6.3",
-    "@vercel/analytics": "1.3.1",
-    "lucide-react": "0.412.0",
-    "gray-matter": "4.0.3",
-    "glob": "10.4.5"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@types/node": "20.14.10",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
-    "typescript": "5.5.3",
-    "tsx": "4.16.2",
-    "vitest": "2.0.3",
     "@vitest/coverage-v8": "2.0.3",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.5",
+    "next-sitemap": "4.2.3",
     "prettier": "3.3.3",
-    "next-sitemap": "4.2.3"
+    "tsx": "4.16.2",
+    "typescript": "5.5.3",
+    "vitest": "2.0.3"
   }
 }
