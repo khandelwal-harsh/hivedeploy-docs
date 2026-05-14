@@ -1,1 +1,90 @@
-/* placeholder; populated in Task 4 */
+/* Design tokens copied verbatim from frontend-ai-orchestrator/app/globals.css
+   — Tailwind/shadcn imports stripped; only CSS custom properties kept — */
+
+:root, .dark {
+    /* Surfaces (off-blacks, never #000) */
+    --background: oklch(0.145 0 0);                  /* #0a0a0a */
+    --surface-1: oklch(0.165 0 0);                   /* #0f0f0f cards, sidebar */
+    --surface-2: oklch(0.205 0 0);                   /* #161616 inputs, hover */
+    --surface-3: oklch(0.245 0 0);                   /* #1f1f1f active */
+    --surface-4: oklch(0.275 0 0);                   /* #232323 buttons */
+    --hover: oklch(0.215 0 0);                       /* #1a1a1a row hover */
+
+    --foreground: oklch(0.93 0 0);                   /* #ededed body */
+    --foreground-strong: oklch(0.985 0 0);           /* #fafafa */
+    --foreground-muted: oklch(0.62 0 0);             /* #888 */
+    --foreground-faint: oklch(0.42 0 0);             /* #555 */
+
+    --border: oklch(0.245 0 0);                      /* #1f1f1f hairline */
+    --border-strong: oklch(0.295 0 0);               /* #2a2a2a strong */
+
+    /* Semantic-minimum (only chromatic accents) */
+    --ok: oklch(0.83 0.18 145);                      /* #4ade80 */
+    --warn: oklch(0.84 0.16 80);                     /* #fbbf24 */
+    --fail: oklch(0.74 0.19 25);                     /* #f87171 */
+    --info: oklch(0.74 0.16 250);                    /* #60a5fa */
+    --ai: oklch(0.78 0.13 280);                      /* #a5b4fc */
+
+    /* Shadcn-named semantic aliases (kept for compatibility with existing primitives) */
+    --card: var(--surface-1);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface-2);
+    --popover-foreground: var(--foreground);
+    --primary: var(--foreground-strong);
+    --primary-foreground: var(--background);
+    --secondary: var(--surface-2);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--foreground-muted);
+    --accent: var(--surface-3);
+    --accent-foreground: var(--foreground-strong);
+    --destructive: var(--fail);
+    --input: var(--surface-2);
+    --ring: var(--border-strong);
+
+    --radius: 0.5rem;                                /* 8px — was 10px */
+    --radius-sm: 0.25rem;                            /* 4px */
+    --radius-xl: 0.875rem;                           /* 14px */
+
+    /* Sidebar */
+    --sidebar: var(--surface-1);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--foreground-strong);
+    --sidebar-primary-foreground: var(--background);
+    --sidebar-accent: var(--surface-2);
+    --sidebar-accent-foreground: var(--foreground-strong);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--border-strong);
+
+    /* Charts — grayscale only by default; tinted variants opt-in */
+    --chart-1: var(--foreground-muted);
+    --chart-2: var(--foreground);
+    --chart-3: var(--foreground-strong);
+    --chart-4: var(--foreground-faint);
+    --chart-5: var(--border-strong);
+}
+
+* {
+  outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+/* === LIGHT MODE === added for hivedeploy-docs site === */
+[data-theme="light"] {
+  --background: #fafafa;
+  --surface-1: #ffffff;
+  --surface-2: #f4f4f5;
+  --surface-3: #e4e4e7;
+  --foreground: #18181b;
+  --foreground-strong: #09090b;
+  --foreground-muted: #52525b;
+  --foreground-faint: #a1a1aa;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --info: #2563eb;
+  --ok: #16a34a;
+  --warn: #ca8a04;
+  --fail: #dc2626;
+}
