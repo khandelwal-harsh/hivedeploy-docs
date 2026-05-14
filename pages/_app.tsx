@@ -3,6 +3,7 @@ import { JetBrains_Mono, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import '../styles/globals.css'
 import '../styles/nextra-overrides.css'
+import '../styles/scalar-overrides.css'
 
 const mono = JetBrains_Mono({
   subsets: ['latin'],

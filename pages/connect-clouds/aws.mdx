@@ -1,0 +1,280 @@
+---
+title: Connect an AWS account
+description: Connect an AWS account so the orchestrator can deploy resources into it using cross-account IAM role with external ID.
+diataxis: how-to
+---
+
+import { Callout } from '../../components/Callout'
+
+This guide walks you through connecting an AWS account using
+**cross-account IAM role with external ID** — the AWS-standard
+pattern for letting a SaaS act on your behalf without exposing
+long-lived access keys.
+
+<Callout type="info">AWS WIF via `AssumeRoleWithWebIdentity` against
+the orchestrator's OIDC issuer is on the roadmap (parallels the
+[GCP WIF setup](/connect-clouds/gcp)). When that ships, this guide will gain
+a Step 0 covering the IAM identity provider creation. For now,
+cross-account role with external ID is the supported pattern.</Callout>
+
+## What this does
+
+After setup, the orchestrator can deploy resources into your AWS
+account by calling `sts:AssumeRole` against a role you create.
+Authentication flow:
+
+1. Orchestrator calls `sts:AssumeRole` with your role ARN + a
+   secret external ID (shown only to you)
+2. AWS STS validates: the orchestrator's IAM principal is allowed to
+   assume the role, AND the supplied external ID matches the role's
+   trust policy condition
+3. AWS returns temporary credentials (15-min to 1-hour TTL)
+4. The orchestrator uses those credentials to call AWS APIs for
+   your deployment
+
+The orchestrator never stores AWS access keys. The external ID is
+how AWS prevents [confused-deputy](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html)
+attacks — even if another customer of the orchestrator knew your
+role ARN, without your external ID they can't assume the role.
+
+## Prerequisites
+
+- An AWS account with IAM administrative permissions (to create
+  roles and trust policies)
+- `aws` CLI installed and authenticated to that account
+- 5-10 minutes for the first account setup
+
+## Step 1 — Get the orchestrator's IAM principal + your external ID
+
+In the orchestrator UI: `/cloud-accounts → Connect cloud → AWS`.
+
+The form shows two read-only values you'll need:
+
+- **Orchestrator IAM principal:** the AWS ARN of the role that
+  will assume into your account (e.g.,
+  `arn:aws:iam::123456789012:role/orchestrator-runtime`)
+- **Your unique external ID:** a UUID generated specifically for
+  your org (e.g., `ext-7a3e9d2c-1f4b-4a8c-9e1d-3b7f8c2a5d6e`)
+
+Copy both — you'll paste them into the role's trust policy.
+
+<Callout type="warning">The external ID is **secret**. Anyone who knows
+it AND has IAM admin in your account could grant themselves the
+trust pattern that lets the orchestrator assume their malicious
+role. Treat it like a password. Don't paste it into Slack, email,
+or screenshots.</Callout>
+
+## Step 2 — Create the IAM role in your AWS account
+
+Save this trust policy to a file (substitute your real external ID
+and the orchestrator's actual principal ARN from Step 1):
+
+```bash
+cat > trust-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::123456789012:role/orchestrator-runtime"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "ext-7a3e9d2c-1f4b-4a8c-9e1d-3b7f8c2a5d6e"
+        }
+      }
+    }
+  ]
+}
+EOF
+```
+
+Create the role:
+
+```bash
+aws iam create-role \
+  --role-name OrchestratorDeployer \
+  --assume-role-policy-document file://trust-policy.json \
+  --description "AI Orchestrator cross-account access"
+```
+
+Note the role's ARN from the output:
+
+```
+arn:aws:iam::987654321098:role/OrchestratorDeployer
+```
+
+You'll paste this into the orchestrator's connect form.
+
+## Step 3 — Grant the role permissions for your deployments
+
+Start narrow — give the role only what your initial deployments need.
+You can expand later:
+
+```bash
+# Common minimal set for cloud-resource-orchestration use cases
+for policy in \
+  arn:aws:iam::aws:policy/AmazonRDSFullAccess \
+  arn:aws:iam::aws:policy/AmazonEC2FullAccess \
+  arn:aws:iam::aws:policy/AmazonS3FullAccess \
+  arn:aws:iam::aws:policy/AmazonEKSClusterPolicy; do
+  aws iam attach-role-policy \
+    --role-name OrchestratorDeployer \
+    --policy-arn "$policy"
+done
+```
+
+<Callout type="info">AWS managed policies (`AmazonRDSFullAccess`,
+etc.) are convenient but over-broad. For production, write a
+custom policy that grants only the specific actions on the
+specific resources the orchestrator's agents will provision.</Callout>
+
+## Step 4 — Paste the values into the orchestrator UI
+
+Back in `/cloud-accounts → Connect cloud → AWS`, fill in:
+
+| Field | Value |
+|---|---|
+| **Account label** | Free-text, e.g. `prod-aws` |
+| **AWS account ID** | Your 12-digit account ID (e.g. `987654321098`) |
+| **Role ARN** | From Step 2 output (`arn:aws:iam::987654321098:role/OrchestratorDeployer`) |
+| **External ID** | The one shown in Step 1 (already filled in for you) |
+| **Default region** | The AWS region your deployments target (e.g. `us-east-1`) |
+
+Click **Connect**. The orchestrator runs the probe:
+
+1. Calls `sts:AssumeRole` with your role ARN + external ID
+2. On success: reads a small bit of account metadata (e.g.,
+   `sts:GetCallerIdentity`) as the smoke test
+3. Marks the cloud account `connected` (green badge)
+
+## Verify
+
+After the green badge appears, you can sanity-check from the
+command line:
+
+```bash
+# As an AWS admin in the customer account:
+aws iam get-role --role-name OrchestratorDeployer \
+  --query 'Role.AssumeRolePolicyDocument'
+```
+
+Output should show your external ID in the `Condition.StringEquals.sts:ExternalId`.
+
+## Troubleshooting
+
+### "AccessDenied — User is not authorized to perform sts:AssumeRole"
+
+The orchestrator's principal isn't allowed by your role's trust
+policy. Check Step 2 — make sure the `Principal.AWS` in trust-policy.json
+matches the **exact** ARN shown in the orchestrator UI's "Orchestrator
+IAM principal" field.
+
+### "AccessDenied — Wrong external ID"
+
+The external ID in the form doesn't match the one in your role's
+trust policy. The form's external ID is generated per-org and is
+immutable. Re-create the role with the correct external ID from
+Step 1.
+
+### "AccessDenied — once role is assumed, specific action denied"
+
+The role was assumed successfully but lacks permissions for a
+specific AWS action (e.g., `rds:CreateDBInstance`). Attach the
+relevant managed policy or write a custom one with the missing
+action.
+
+### "Role does not exist"
+
+Typo in the role ARN, or the role wasn't created in the AWS account
+matching the **AWS account ID** field. Verify with:
+
+```bash
+aws iam get-role --role-name OrchestratorDeployer
+```
+
+If "NoSuchEntity": re-run Step 2.
+
+### Connect succeeds but deployments fail with API-not-enabled errors
+
+Some AWS services require explicit opt-in per region (e.g., some
+ML services, some regions for newer services). Enable them in the
+AWS Console under the relevant service.
+
+## Removing an AWS connection
+
+```bash
+# 1. Remove the cloud-account row from the orchestrator UI
+#    (Cloud Accounts → click the account → Remove)
+
+# 2. Delete the IAM role in your AWS account
+aws iam list-attached-role-policies --role-name OrchestratorDeployer \
+  --query 'AttachedPolicies[].PolicyArn' --output text | \
+  xargs -n1 aws iam detach-role-policy --role-name OrchestratorDeployer --policy-arn
+
+aws iam delete-role --role-name OrchestratorDeployer
+```
+
+After this, even if someone had your external ID, the role doesn't
+exist — no path back into your account.
+
+## How this works under the hood
+
+```
+┌─────────────────────────┐
+│ Orchestrator backend    │
+│   (in our AWS account)  │
+│   runtime principal:    │
+│   arn:aws:iam::123...   │
+└───────────┬─────────────┘
+            │ sts:AssumeRole(roleArn=987...:role/OrchestratorDeployer,
+            │               externalId="ext-7a3e9...")
+            ▼
+┌─────────────────────────┐
+│ AWS STS                 │
+│   - validates principal │
+│   - validates ext ID    │
+│   - returns 1h creds    │
+└───────────┬─────────────┘
+            │ AccessKey + SecretKey + SessionToken (15min-1h TTL)
+            ▼
+┌─────────────────────────┐
+│ Orchestrator uses creds │
+│   to call AWS APIs:     │
+│   rds.create_db_instance│
+│   ec2.run_instances     │
+│   ...                   │
+└─────────────────────────┘
+```
+
+The orchestrator's runtime IAM principal lives in **our** AWS account
+(separate from yours). Your role's trust policy says "this specific
+principal in their account can assume my role, but only if they
+present the right external ID". The external ID is the
+defense-in-depth: it prevents another customer (whose role might
+share the same `Principal` block) from accidentally being able to
+assume yours due to the [confused deputy](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html)
+problem.
+
+## Comparison with GCP / Azure
+
+| | AWS | GCP | Azure |
+|---|---|---|---|
+| Mechanism | Cross-account IAM role + external ID | Workload Identity Federation | Service Principal w/ federated credentials |
+| Credential lifetime | 15min-1h (STS-issued) | 1h (impersonation token) | 1h (federated assertion) |
+| Customer-side primitive | IAM role w/ trust policy | WIF Pool + Provider + binding | App registration + federated cred |
+| Orchestrator stores | Role ARN + external ID | Provider resource path | App ID + tenant + cert thumbprint |
+
+All three converge on **short-lived federated credentials with no
+long-lived secrets at the orchestrator**. The customer-side setup
+differs because each cloud has its own primitives, but the security
+posture is equivalent.
+
+## See also
+
+- [Connect GCP](/connect-clouds/gcp) — parallel guide for GCP
+- [Connect Azure](/connect-clouds/azure) — parallel guide for Azure
+- [Concepts — Security model](/concepts/security-wif) — why
+  federated credentials matter
