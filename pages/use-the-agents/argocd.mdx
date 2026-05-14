@@ -1,0 +1,102 @@
+---
+title: ArgoCD agent
+description: How to use the ArgoCD specialist — GitOps platform setup, HA install, app-of-apps pattern, RBAC, and Sealed Secrets.
+diataxis: how-to
+---
+
+import { Callout } from '../../components/Callout'
+
+> The ArgoCD agent deploys and manages a GitOps continuous delivery platform: Argo CD in HA mode, app-of-apps bootstrapping, GitHub OAuth via Dex, RBAC, Sealed Secrets, and cert-manager TLS — on any Kubernetes cluster (EKS, GKE, AKS).
+
+<Callout type="info">
+  The ArgoCD agent is in beta. It covers the HA install and GitOps bootstrap pattern. Day-2 features (multi-cluster fleet management, ApplicationSets, image updater) are on the roadmap.
+</Callout>
+
+## What it deploys
+
+- **Argo CD HA Helm release** — 3 replicas each of `argocd-server`, `repo-server`, and `applicationset-controller`; `application-controller` with sharding support for large fleets
+- **Redis HA** (3 nodes + Sentinel) — `argocd-server` caches manifests here
+- **cert-manager** — TLS on the ArgoCD UI and API via Let's Encrypt
+- **Sealed Secrets controller** — lets application repos commit encrypted Secrets safely
+- **`bootstrap-apps` Application** — the app-of-apps root; points at `apps/` in your GitOps repo and creates all child Applications automatically
+- **`platform` AppProject** — scoped to your source repo, permits all destinations and cluster-scoped resources
+
+Supported clusters: EKS (primary), GKE and AKS (community-tested).
+
+## Quickstart
+
+1. **Start the agent:** "Set up ArgoCD for our platform — we manage 3 clusters."
+2. **Gate 1 — topology inputs:** Agent asks for cluster count, identity provider (GitHub, Okta, Google), and Git host. Reply with your details.
+3. **Gate 2 — topology review:** Agent proposes HA install with Redis HA, 3 server replicas, app-of-apps. Approve or ask for a single-replica alternative (staging only).
+4. **Gate 3 — Git connection:** Agent configures an SSH deploy key for your GitOps repo. You add the key to GitHub deploy keys (read-only).
+5. **Gate 4 — auth and RBAC:** Agent configures GitHub OAuth via Dex. `platform-admin` org members get `role:admin`; everyone else gets `role:readonly`.
+6. **Gate 5 — observability:** Agent wires Prometheus scrape of `argocd-metrics`, `repo-server`, and `application-controller`. Alerts: `OutOfSync > 15 min`, sync failure spike, controller queue lag > 60s.
+7. **Gate 6 — review and deploy:** Terraform plan shows EKS node group, 4 Helm releases, bootstrap Application, and AppProject. ~15 minutes for a fresh EKS cluster.
+
+After deploy the agent outputs:
+- ArgoCD UI URL (NLB + TLS via cert-manager)
+- Initial admin password location (K8s secret `argocd-initial-admin-secret`)
+- SSH deploy key to paste into GitHub
+
+## Configuration options
+
+| Option | Default | Description |
+|---|---|---|
+| `server_replicas` | `3` | ArgoCD server replicas (HA) |
+| `repo_server_replicas` | `3` | Repo-server replicas |
+| `redis_ha` | `true` | Redis HA (Sentinel) — disable for staging |
+| `oidc_provider` | `github` | Identity provider: `github`, `google`, `okta`, or `none` |
+| `admin_org_team` | `platform-admin` | GitHub org team that gets `role:admin` |
+| `sealed_secrets` | `true` | Deploy Sealed Secrets controller alongside |
+| `tls` | `lets-encrypt` | TLS mode: `lets-encrypt` or `self-signed` |
+
+## The app-of-apps pattern
+
+The bootstrap Application the agent seeds works like this:
+
+1. `bootstrap-apps` Application watches `apps/` in your GitOps repo.
+2. `apps/` contains one `Application` manifest per real workload.
+3. ArgoCD watches `bootstrap-apps` → `bootstrap-apps` creates child Applications → each child syncs its own folder.
+
+To add a new service: commit a YAML `Application` manifest to `apps/` in Git. ArgoCD picks it up within the sync interval (default 3 minutes, or seconds with a webhook).
+
+```yaml
+# apps/my-service.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-service
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: git@github.com:org/platform-gitops.git
+    targetRevision: HEAD
+    path: services/my-service
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: my-service
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Application stuck in `OutOfSync` | Git repo unreachable or SSH key not added | Check deploy key in GitHub; run `argocd repo list` to test |
+| `ComparisonError` on Application | CRD version mismatch or invalid YAML in source | Check the ArgoCD application events; validate YAML locally |
+| Redis HA Sentinel split-brain | Less than 2 Redis pods healthy | Check pod status; Sentinel requires quorum of 2 |
+| `repo-server` OOM | Large Helm charts with many resources | Increase `repo-server` memory limit; consider splitting the AppProject |
+| Initial admin password lost | K8s secret deleted | Reset via `argocd admin initial-password -n argocd` on the pod |
+| ArgoCD not syncing after webhook push | Webhook URL not registered or HMAC secret mismatch | Re-register webhook URL from ArgoCD UI → Settings → Repositories |
+
+## See also
+
+- [Concepts: Agents](/concepts/agents)
+- [Concepts: Gates](/concepts/gates)
+- [Reference: Agents list](/reference/agents-list)

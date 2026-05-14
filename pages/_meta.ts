@@ -4,6 +4,7 @@ export default {
   concepts: 'Concepts',
   'connect-clouds': 'Connect a cloud',
   guides: 'Guides',
+  'use-the-agents': 'Use the agents',
   reference: 'Reference',
   troubleshooting: 'Troubleshooting',
 }
