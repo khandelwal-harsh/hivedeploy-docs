@@ -71,12 +71,18 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
-/* === LIGHT MODE === added for hivedeploy-docs site === */
-[data-theme="light"] {
+/* === LIGHT MODE === added for hivedeploy-docs site ===
+   nextra-theme-docs uses next-themes which adds class="light" (or "dark")
+   on <html>. We override the dark :root tokens by targeting .light. Also
+   override --surface-4/--hover (used by Nextra chrome) so prose, code
+   blocks, sidebar hover, and tables flip too. */
+:where(html.light, .light, [data-theme='light']) {
   --background: #fafafa;
   --surface-1: #ffffff;
   --surface-2: #f4f4f5;
   --surface-3: #e4e4e7;
+  --surface-4: #d4d4d8;
+  --hover: #ececef;
   --foreground: #18181b;
   --foreground-strong: #09090b;
   --foreground-muted: #52525b;
@@ -87,4 +93,13 @@ body {
   --ok: #16a34a;
   --warn: #ca8a04;
   --fail: #dc2626;
+  --ai: #7c3aed;
+}
+
+/* Higher-specificity override of `:root, .dark { ... }` defaults — the
+   :root selector is (0,1,0) same as .light so source order wins; this
+   stub guarantees no future cascading surprise. */
+html.light :root,
+html.light {
+  color-scheme: light;
 }
