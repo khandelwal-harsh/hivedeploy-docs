@@ -9,6 +9,23 @@ out
 build
 dist
 
+# Build artifacts emitted to public/ (regenerated each build)
+public/openapi.json
+public/llms.txt
+public/llms-full.txt
+public/sitemap.xml
+public/sitemap-0.xml
+public/robots.txt
+public/changelog.xml
+public/*.md
+public/concepts/*.md
+public/connect-clouds/*.md
+public/guides/*.md
+public/reference/*.md
+public/troubleshooting/*.md
+public/use-the-agents/*.md
+public/changelog/*.md
+
 # Vercel
 .vercel
 
