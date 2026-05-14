@@ -3,5 +3,6 @@ export default {
   api: 'API',
   'api-reference': 'API reference (interactive)',
   'env-vars': 'Environment variables',
-  // 'gate-transitions' and 'webhooks' will be added by Task 21
+  'gate-transitions': 'Gate transitions',
+  webhooks: 'Webhooks & events',
 }
