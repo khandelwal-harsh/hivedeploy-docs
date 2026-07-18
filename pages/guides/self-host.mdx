@@ -16,7 +16,7 @@ Before you start, make sure you have:
 - A **managed Postgres 15+** instance, or willingness to run it in a container. The backend uses async Postgres via `asyncpg`.
 - A **managed Redis 7+** instance, or willingness to run it in a container. Used as the Celery task broker and general cache.
 - A **managed MongoDB 7+** instance, or willingness to run it in a container. Used for chat history and agent session storage.
-- An **LLM provider API key** — the backend calls a frontier-class LLM for every agent conversation. The specific provider key name is set via the `ANTHROPIC_API_KEY` env var (see Step 2). Contact your Hivedeploy representative for the recommended provider and procurement options.
+- An **LLM provider API key** — the backend calls a frontier-class LLM for every agent conversation. The exact env-var name, supported provider, and procurement options are included in your self-host onboarding bundle — contact your Hivedeploy representative.
 - A **[Resend](https://resend.com/) account** with a verified sending domain for transactional email (verification, password reset, notifications).
 - A **[Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/)** site key + secret key for bot-protection on the signup and login forms.
 - Optionally, a **Stripe account** if you intend to run billing. Set `PAYMENT_PROVIDER=none` to skip billing entirely (see Step 2).
@@ -52,7 +52,7 @@ These must be set before the backend will start:
 | `MONGO_URL` | MongoDB URL with auth. Format: `mongodb://admin:pw@host:27017/dbname?authSource=admin` |
 | `MONGO_DB` | Default Mongo database name |
 | `JWT_SECRET` | HS256 secret for API auth JWTs. **Minimum 32 bytes.** Generate with: `openssl rand -hex 32` |
-| `ANTHROPIC_API_KEY` | LLM provider API key (legacy env-var name kept for backward compatibility) |
+| *(model-provider key)* | LLM provider API key — the exact variable name ships in your self-host onboarding bundle |
 | `RESEND_API_KEY` | Resend.com API key |
 | `EMAIL_FROM` | Sending address for transactional email (e.g. `no-reply@yourdomain.com`) |
 | `TURNSTILE_SITE_KEY` | Cloudflare Turnstile public site key (also used by the frontend) |

@@ -85,7 +85,7 @@ After the live deploy succeeds:
 - [ ] `/reference/api-reference` loads Scalar with the snapshotted spec
 - [ ] Click 👍 on a page → check Slack `#docs-feedback` for the message
 - [ ] Click 👎 + comment on a page → check Slack
-- [ ] `/llms.txt` is reachable (visit in browser, see plain-text Anthropic-format index)
+- [ ] `/llms.txt` is reachable (visit in browser, see plain-text llms.txt-format index)
 - [ ] `/llms-full.txt` is reachable (full corpus concatenation)
 - [ ] `/concepts/gates.md` (per-page markdown export) is reachable
 - [ ] `/sitemap.xml` lists all published pages

@@ -51,7 +51,7 @@ describe('pagePathToUrl', () => {
 })
 
 describe('renderLlmsTxt', () => {
-  it('renders the Anthropic-format index', () => {
+  it('renders the llms.txt-format index', () => {
     const pages = [
       { url: '/quickstart', title: 'Quickstart', description: 'Get your first deployment running in 10 minutes' },
       { url: '/concepts/gates', title: 'Gates', description: 'The 6-stage deployment flow' },

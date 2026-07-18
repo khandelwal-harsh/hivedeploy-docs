@@ -32,6 +32,13 @@ function Head() {
       <meta property="og:type" content="article" />
       <meta name="twitter:card" content="summary_large_image" />
       <link rel="canonical" href={canonical} />
+      {/* Platform design system font (Geist) — CSP allows fonts.googleapis/gstatic */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet"
+      />
     </>
   )
 }

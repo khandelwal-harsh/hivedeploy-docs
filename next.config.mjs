@@ -18,7 +18,8 @@ const csp = isProd
   ? [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' va.vercel-scripts.com",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
+      "font-src 'self' fonts.gstatic.com",
       "img-src 'self' data: https://*.vercel-storage.com",
       "connect-src 'self' vitals.vercel-insights.com",
       "frame-ancestors 'none'",
@@ -26,7 +27,8 @@ const csp = isProd
   : [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' va.vercel-scripts.com",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
+      "font-src 'self' fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.vercel-storage.com",
       "connect-src 'self' ws: wss: vitals.vercel-insights.com",
       "frame-ancestors 'none'",

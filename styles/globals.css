@@ -84,6 +84,11 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  /* Platform design system typeface (loaded via <link> in theme Head) */
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+}
+code, pre, kbd, samp, .nextra-code {
+  font-family: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
 }
 /* === LIGHT MODE === added for hivedeploy-docs site ===
    nextra-theme-docs uses next-themes which toggles class="light"/"dark"
