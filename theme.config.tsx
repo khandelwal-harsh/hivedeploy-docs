@@ -32,6 +32,7 @@ function Head() {
       <meta property="og:type" content="article" />
       <meta name="twitter:card" content="summary_large_image" />
       <link rel="canonical" href={canonical} />
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       {/* Platform design system font (Geist) — CSP allows fonts.googleapis/gstatic */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -44,7 +45,12 @@ function Head() {
 }
 
 const config: DocsThemeConfig = {
-  logo: <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>hivedeploy / docs</span>,
+  logo: (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.55rem', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+      <img src="/favicon.svg" alt="" width={20} height={20} />
+      hivedeploy / docs
+    </span>
+  ),
   project: {
     link: 'https://github.com/khandelwal-harsh/hivedeploy-docs',
   },
