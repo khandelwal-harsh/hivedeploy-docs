@@ -131,6 +131,12 @@ etc.) are convenient but over-broad. For production, write a
 custom policy that grants only the specific actions on the
 specific resources the orchestrator's agents will provision.</Callout>
 
+For **application deployments** (as opposed to databases), the agents
+additionally use: ECS/Fargate, ECR, **CodeBuild** (zip-source deploys
+build the container image inside your account), Elastic Load
+Balancing, Auto Scaling, Lambda, and CloudWatch Logs — grant the
+matching policies for the topologies you'll actually deploy.
+
 ## Step 4 — Paste the values into the orchestrator UI
 
 Back in `/cloud-accounts → Connect cloud → AWS`, fill in:
@@ -196,6 +202,22 @@ aws iam get-role --role-name OrchestratorDeployer
 ```
 
 If "NoSuchEntity": re-run Step 2.
+
+### Connect succeeds but deployments hit quota limits
+
+New AWS accounts commonly start with **5 VPCs and 5 Elastic IPs per
+region** and low On-Demand/Fargate vCPU quotas. The platform checks
+headroom at preflight (fast failure with the limit named), but raising
+the limits is yours:
+
+```bash
+aws service-quotas request-service-quota-increase \
+  --service-code vpc --quota-code L-F678F1CE --desired-value 15   # VPCs/region
+```
+
+Full deployment-time failure patterns — including which ones the
+platform self-heals — are on
+[Troubleshooting AWS deployments](/troubleshooting/deployments-aws).
 
 ### Connect succeeds but deployments fail with API-not-enabled errors
 
@@ -278,3 +300,4 @@ posture is equivalent.
 - [Connect Azure](/connect-clouds/azure) — parallel guide for Azure
 - [Concepts — Security model](/concepts/security-wif) — why
   federated credentials matter
+- [Troubleshooting AWS deployments](/troubleshooting/deployments-aws) — post-connect failure patterns

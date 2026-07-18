@@ -42,15 +42,23 @@ gcloud services enable \
   compute.googleapis.com \
   container.googleapis.com \
   storage.googleapis.com \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
+  secretmanager.googleapis.com \
+  logging.googleapis.com \
+  monitoring.googleapis.com \
   --project=YOUR_PROJECT_ID
 ```
 
 The first three (`sts`, `iamcredentials`, `cloudresourcemanager`) are
-required for WIF authentication itself. The rest are needed by the
-deployment specialists that will create resources in your project
-(extend the list based on what services you'll deploy — e.g. add
-`sqladmin.googleapis.com` if deploying Cloud SQL, `cloudkms.googleapis.com`
-if deploying with KMS-protected resources).
+required for WIF authentication itself. The rest are what application
+deployments actually use: `run`/`cloudbuild`/`artifactregistry` for
+container builds and Cloud Run services, `secretmanager` for injected
+app credentials, and `logging`/`monitoring` for the live Logs and
+Metrics panels on every deployment. Extend the list for extra
+services — e.g. add `sqladmin.googleapis.com` if deploying Cloud SQL,
+`cloudkms.googleapis.com` for KMS-protected resources.
 
 ### Step 1 — Create a Workload Identity Pool
 
@@ -166,6 +174,31 @@ Click **Connect**. The orchestrator runs a smoke test:
 4. Reads project metadata as the final check
 
 On success: green "Connected" badge.
+
+## Prepare quotas before your first deployment
+
+Connection succeeds against any project — but *deployments* hit
+default quotas fast on new projects. The platform checks quota
+headroom at preflight (you fail in seconds with the exact limit named,
+not after 20 minutes of churn), but raising limits is a project-owner
+action only you can take:
+
+| Quota | Typical default | Consumed by |
+|---|---|---|
+| `NETWORKS` (VPCs) | 5 / project | one per isolated environment |
+| `SSD_TOTAL_GB` | 300–500 / region | GKE node pools (a hardened pool can hold 200GB+) |
+| `CPUS` | 8–24 / region | multi-VM and multi-zone topologies |
+| `IN_USE_ADDRESSES` | 8 / region | load balancers, NAT |
+
+Raise them in Console → IAM & Admin → Quotas before your first
+production-shaped deployment.
+
+<Callout type="warning">If you request bumps through the Cloud Quotas
+**API** rather than the console, include a contact email — the API
+silently accepts requests without one and they never get processed.</Callout>
+
+More deployment-time patterns (and which ones the platform self-heals):
+[Troubleshooting GCP deployments](/troubleshooting/deployments-gcp).
 
 ## Troubleshooting
 
@@ -296,3 +329,4 @@ even then, only customers who set up the trust binding are at risk.
 - [Connect AWS](/connect-clouds/aws)
 - [Connect Azure](/connect-clouds/azure)
 - [Concepts — Security model](/concepts/security-wif) (per-org isolation deep dive)
+- [Troubleshooting GCP deployments](/troubleshooting/deployments-gcp) — post-connect failure patterns

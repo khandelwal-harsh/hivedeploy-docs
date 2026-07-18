@@ -8,6 +8,67 @@ Notable changes to the Hivedeploy platform. Subscribe to the [RSS feed](/changel
 
 ---
 
+## 2026-07-18 — Public reliability ledger
+
+**Added**
+- **[proof.hivedeploy.in](https://proof.hivedeploy.in)** — our published reliability ledger: raw *and* converged pass rates from real deployment campaigns, every failure root-caused with a public evidence dossier, costs included. Numbers are labeled with their exact envelope (agent × cloud × scenario set × gate version) — no unqualified claims.
+- Docs: per-cloud deployment troubleshooting ([GCP](/troubleshooting/deployments-gcp), [AWS](/troubleshooting/deployments-aws)) written from those campaign dossiers, and a new [self-healing explainer](/concepts/self-healing).
+
+---
+
+## 2026-07-16 — AWS application deployments
+
+**Added**
+- Full Java application topology envelope on AWS: **Fargate HA, EKS, ASG + ALB, 3-VM EC2, Lambda SnapStart** — mirroring the GCP envelope
+- Zip-source deploys build images via **CodeBuild inside your account**
+- Observability discovery for ECS, ASG, and EKS deployments; EKS metrics fall back to node-level EC2 series when Container Insights isn't installed, so panels are never structurally blank
+
+**Fixed**
+- Health model no longer counts ALB-generated 502/503/504 pages as "app up" — verification waits for real application responses
+- Availability-zone capacity errors (`InsufficientInstanceCapacity`) now rotate to a sibling AZ automatically
+
+---
+
+## 2026-07-14 — Health verification v1.1 + Cloud Run probe fix
+
+**Changed**
+- Health verification now gates on **health + logs + metrics**; backing-store connection is measured and displayed, non-gating (the failing class proved environmentally dominated, not app-defect dominated)
+
+**Fixed**
+- Cloud Run: Google's front end reserves `/healthz` externally (404 to outside callers even when the container serves it) — the public probe now falls back across candidate health paths, unblocking the entire Cloud Run class
+- Container images are pinned by digest at deploy time, eliminating stale-tag races
+
+---
+
+## 2026-07-02 → 07-12 — Self-healing deployments
+
+**Added**
+- **Bounded auto-repair ladder**: deterministic fixers first (capacity rotation, name-collision rename, JVM memory hardening, template hygiene, and more), then AI repair with anti-repeat steering, then redeploy — at most 5 attempts, every one visible in the run log
+- **Learned fixers**: the platform distills new deterministic fixers from its own repair history and applies them without an AI call
+- Kubernetes deployments get correct startup/liveness/readiness probes; zone fallback on GCP capacity errors; JVM apps on small instances are auto-hardened against OOM crash-loops
+
+---
+
+## 2026-06-13 → 06-28 — Generative deployments, the flywheel, and the learning curve
+
+**Added**
+- **Generative deployments**: ask for a topology outside the template catalog and the agent plans, renders, and deploys it — behind the same gates and health verification as everything else
+- **Template promotion flywheel**: every verified generative success is captured, quarantined, and ratified into the deterministic template library — the next identical ask routes through the frozen template (faster, cheaper, variance-free)
+- **Learning curve**: generative mistakes are distilled into lessons that steer future generation (guidance first, hard gate once proven)
+- **Quota preflight**: deployments check cloud quota headroom before applying — you fail in seconds with the exact limit named, not after 20 minutes of churn
+- Cross-agent isolation: fixes for one agent/cloud are scoped and tested to never regress the others
+
+---
+
+## 2026-05-15 → 05-17 — Multi-cloud parity + RBAC
+
+**Added**
+- Multi-cloud deployment pipeline parity across AWS / GCP / Azure adapters
+- Provider-native IAM permission sets per deployment topology
+- RBAC admin UI: deny-by-default roles, per-agent gating, approval hierarchy
+
+---
+
 ## 2026-05-13 — GCP WIF integration
 
 **Added**

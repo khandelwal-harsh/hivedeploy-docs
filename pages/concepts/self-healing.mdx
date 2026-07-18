@@ -1,0 +1,98 @@
+---
+title: How self-healing works
+description: The bounded auto-repair ladder, the learning curve, the template promotion flywheel, and how a deployment earns "verified healthy".
+diataxis: explanation
+---
+
+import { Callout } from '../../components/Callout'
+
+A deployment on Hivedeploy doesn't end at `terraform apply` — it ends
+when the application **proves it's serving**, or when the platform has
+honestly exhausted a bounded repair budget and tells you exactly why.
+This page explains the machinery between those two outcomes.
+
+## The health verification
+
+After apply, the platform verifies the deployment from the outside:
+
+1. **Health** — the app's endpoint answers 200 (probed across
+   candidate paths: `/healthz`, `/health`, `/actuator/health`,
+   `/livez`, `/`; load-balancer-generated 502/503/504 pages never
+   count as "up").
+2. **Logs** — observability discovers the deployed services and
+   streams at least one real log entry.
+3. **Metrics** — at least one live datapoint arrives in metrics
+   history.
+4. **Connection** — where the app exposes store-aware health (e.g.
+   Spring Actuator aggregating DB checks), backing-store connectivity
+   is measured and recorded.
+
+The first three gate the "healthy" verdict; connection is measured and
+shown. A deployment that can't pass is a failed deployment — there is
+no "applied cleanly, hope it works" state.
+
+## The auto-repair ladder
+
+When verification (or apply itself) fails, repair runs as a ladder —
+cheapest, most reliable layer first:
+
+1. **Deterministic fixers.** A library of exact-match fixes for known
+   failure classes: AZ capacity rotation, resource-name collisions,
+   undersized-JVM hardening, template-token hygiene, and dozens more.
+   They apply in milliseconds, with no AI call, and each one exists
+   because we root-caused that class in real deployments.
+2. **AI repair.** For failures no deterministic fixer matches, the
+   agent reads the error evidence (Terraform output, cloud logs, boot
+   diagnostics) and edits the infrastructure code — with anti-repeat
+   steering so it never retries an approach that already failed.
+3. **Redeploy.** The corrected deployment applies again and goes back
+   through the full health verification.
+
+<Callout type="info">The ladder is **bounded**: at most 5 repair
+attempts per deployment. Unbounded "keep trying" loops burn your money
+and hide real defects. When the budget is exhausted, the run log shows
+every attempt, the final blocking finding, and the preserved Terraform
+for inspection.</Callout>
+
+Some failures are *correctly* outside the ladder's reach — a wrong
+quota on your account, an app that serves no health path. Those
+surface immediately with the action that's yours to take (see the
+[GCP](/troubleshooting/deployments-gcp) and
+[AWS](/troubleshooting/deployments-aws) troubleshooting pages).
+
+## The learning curve
+
+Repair fixes one deployment. Learning prevents the class:
+
+- **Lessons.** When a generative deployment makes a mistake that
+  repair later corrects, the mistake is captured and distilled into a
+  lesson that steers *future* generation — first as guidance, then as
+  a hard gate once proven.
+- **Learned fixers.** The platform also distills new deterministic
+  fixers from its own repair history. In our campaigns it
+  independently derived a fix that one of our engineers had
+  hand-written days earlier — and now applies it in ~300ms with no AI
+  call.
+
+## The promotion flywheel
+
+Every *successful* generative deployment is captured, quarantined, and
+— after validation — **ratified into the deterministic template
+library**. The next request for that shape routes through the frozen
+template instead of fresh generation: faster, cheaper, and immune to
+generation variance. Reliability and cost improve with use; that's the
+flywheel.
+
+## Where the numbers live
+
+We publish the reliability record this machinery produces — raw and
+converged pass rates, every failure attributed with an evidence
+dossier, costs included — on the public ledger at
+[proof.hivedeploy.in](https://proof.hivedeploy.in). When a number on
+that page moves, this machinery is why.
+
+## See also
+
+- [Gates](/concepts/gates) — the *approval* flow before anything applies
+- [Troubleshooting GCP deployments](/troubleshooting/deployments-gcp)
+- [Troubleshooting AWS deployments](/troubleshooting/deployments-aws)

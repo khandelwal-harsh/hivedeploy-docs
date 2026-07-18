@@ -1,0 +1,64 @@
+---
+title: Deploy a Java service
+description: Spring Boot and Quarkus deployments across Cloud Run, GKE, Fargate, EKS, VMs, and more — the most campaign-tested envelope on the platform.
+diataxis: how-to
+---
+
+import { Callout } from '../../components/Callout'
+
+The Java agent deploys Spring Boot and Quarkus applications (Micronaut
+in the generative path) and is currently the platform's most heavily
+verified agent: its topologies are the ones exercised by the published
+reliability campaigns on
+[proof.hivedeploy.in](https://proof.hivedeploy.in).
+
+## Supported topologies
+
+| Cloud | Topologies |
+|---|---|
+| **GCP** | Cloud Run (single + multi-service) · GKE (standard, hardened, multi-zone HA) · 3-VM Compute Engine (api + workers) · Managed Instance Group + global HTTPS LB |
+| **AWS** | Fargate HA · EKS · Auto Scaling Group + ALB · 3-VM EC2 · Lambda SnapStart |
+
+Ask for anything else and the generative path plans it — behind the
+same gates and health verification. Verified generative successes are
+promoted into the deterministic template library
+([how that works](/concepts/self-healing)).
+
+## What the agent handles for you
+
+- **Build**: your source (repo or zip) is built inside *your* cloud —
+  Cloud Build on GCP, CodeBuild on AWS — and images are pinned by
+  digest, so a deploy can never pick up a stale image.
+- **JVM sizing**: instance/machine types are chosen for JVM memory
+  behavior, and the runtime gets `JAVA_TOOL_OPTIONS` heap bounds plus
+  a restart policy. Undersized asks get bumped rather than deployed as
+  crash-loops.
+- **Health contract**: probes try `/actuator/health` and the standard
+  candidate paths automatically. If your app exposes Spring Actuator
+  with DB health indicators, backing-store connectivity shows up in
+  the health verification's connection measurement for free.
+- **Workers**: headless workers (queue consumers, `SERVICE=worker`
+  processes) are routed to platforms that allow non-HTTP containers —
+  never onto Cloud Run, which requires every service to bind `$PORT`.
+
+## Conventions worth following
+
+- Expose **Spring Actuator** (`spring-boot-starter-actuator`) — it
+  gives the platform a health path and store-aware checks with zero
+  custom code.
+- Externalize store config via environment (`SPRING_DATASOURCE_URL`,
+  `SPRING_DATA_MONGODB_URI`, Redis host/port vars) — the platform
+  injects credentials for the datasources you declared at Gate 3.
+- Keep the app booting in under ~3 minutes on your chosen tier; load
+  balancers only start routing after first health pass.
+
+## When something fails
+
+The per-cloud pages cover every recurring class and whether it
+self-heals: [GCP](/troubleshooting/deployments-gcp) ·
+[AWS](/troubleshooting/deployments-aws).
+
+<Callout type="info">Two Java-specific ones to know: **small-instance
+JVM OOM** (auto-hardened — see the AWS page) and **Cloud Run's
+external `/healthz` 404** (Google front-end behavior, auto-handled —
+see the GCP page).</Callout>

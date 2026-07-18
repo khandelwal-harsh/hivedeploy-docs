@@ -1,0 +1,159 @@
+---
+title: Troubleshooting GCP deployments
+description: The failure patterns we actually see on GCP deployments — what the platform fixes automatically, and what needs action from you.
+diataxis: how-to
+---
+
+import { Callout } from '../../components/Callout'
+
+Everything on this page comes from our published reliability campaigns —
+hundreds of real deployments to GCP, every failure root-caused and
+dossier'd on the [public reliability ledger](https://proof.hivedeploy.in).
+For each pattern: what you'll see, whether the platform self-heals it,
+and what to do when action is yours.
+
+## Cloud Run: health checks pass inside, 404 outside
+
+**Symptom:** your service's own startup and liveness probes on
+`/healthz` succeed, but calling `https://<service-url>/healthz` from
+outside returns **404** — while `/` serves fine.
+
+**Cause:** Google's front end **reserves `/healthz` externally**. Even
+when your container serves that path, outside callers get a GFE 404.
+This is Google behavior, not a bug in your app.
+
+**Platform handling:** automatic. The post-deploy health verification
+falls back across candidate paths (`/healthz` → `/health` →
+`/actuator/health` → `/livez` → `/`) and accepts the first real 2xx.
+Your app just needs *some* externally reachable 2xx path.
+
+**Your action:** none — unless your app serves *no* 2xx on any of
+those paths. Then add a root or health route.
+
+## Cloud Run: "no recent logs" on a healthy scale-to-zero service
+
+**Symptom:** deployment verified healthy, but the Logs panel shows no
+recent entries.
+
+**Cause:** with `min_instances=0`, an idle container emits nothing —
+the recency-windowed log stream is legitimately empty until traffic
+arrives.
+
+**Your action:** send a request and refresh; logs appear. This is
+expected behavior, not a failure.
+
+## Cloud Run: worker containers fail startup probes
+
+**Symptom:** multi-service deployments where API services go healthy
+but *worker* services die with "container failed to become healthy /
+startup probe timed out."
+
+**Cause:** Cloud Run requires every service to listen on `$PORT`.
+A headless worker (queue consumer, scheduler) that binds no port can
+never pass Cloud Run's own health check.
+
+**Platform handling:** automatic. The planner routes headless workers
+away from Cloud Run (to GKE or Compute Engine), and a deterministic
+pre-apply fixer catches renders that still try it. If you explicitly
+ask for "everything on Cloud Run" with headless workers, the agent
+will push back — that's the correct answer, not a limitation.
+
+**Your action:** accept the suggested topology, or give the worker an
+HTTP surface if you genuinely want it on Cloud Run.
+
+## Quota walls: VPC networks, SSD, CPUs
+
+**Symptom:** deployment aborts at preflight with a quota message
+naming the exact limit, or Terraform fails with `QUOTA_EXCEEDED`.
+
+New/default GCP projects commonly start with limits that real
+topologies hit fast:
+
+| Quota | Common default | Hit by |
+|---|---|---|
+| `NETWORKS` (VPCs) | 5 per project | Each isolated deployment env |
+| `SSD_TOTAL_GB` | 300–500 per region | One hardened GKE pool can hold 200GB+ |
+| `CPUS` | 8–24 per region | Multi-VM or multi-zone topologies |
+
+**Platform handling:** partial. Preflight checks quota headroom
+*before* applying (so you fail in seconds, not after 20 minutes of
+churn), and zone-level capacity problems rotate to a sibling zone
+automatically. Raising the quota itself is a project-owner action GCP
+reserves for you.
+
+**Your action:** raise quotas in Console → IAM & Admin → Quotas, or
+via the API:
+
+```bash
+gcloud services enable cloudquotas.googleapis.com
+# then request the bump (SSD example, us-central1)
+```
+
+<Callout type="warning">If you request quota bumps via the Cloud
+Quotas **API**, include a contact email. The API silently accepts
+requests without one — and they sit unprocessed forever. This cost us
+a day in our own testing.</Callout>
+
+Also note: a *failed* deployment's resources can hold quota
+reservations for a few minutes after teardown begins (e.g. a deleting
+GKE node pool still owns its SSD). If a preflight fails right after a
+failed run, wait 2–3 minutes and retry.
+
+## "Already exists" (409) collisions after a failed run
+
+**Symptom:** re-running a deployment fails with 409 on a Secret
+Manager secret, Artifact Registry repo, or firewall name.
+
+**Cause:** residue from an earlier failed run that didn't fully tear
+down.
+
+**Platform handling:** automatic in most cases — deterministic fixers
+rename colliding resources, and teardown sweeps clean up residue. If
+one slips through:
+
+```bash
+gcloud secrets list --filter="name~<app-name>"
+gcloud artifacts repositories list --location=<region>
+# delete the stale one, then redeploy
+```
+
+## Logs and metrics panels empty right after deploy
+
+**Symptom:** deployment healthy, but Logs/Metrics panels fill in late.
+
+**Cause:** Cloud Logging and Cloud Monitoring ingestion lags real
+activity by roughly 2–5 minutes for a brand-new resource.
+
+**Platform handling:** the health verification already waits an
+ingestion window before checking observability. If panels are still
+empty after ~10 minutes on a service that's receiving traffic, that's
+worth reporting.
+
+## JVM apps crash-looping on small VMs
+
+**Symptom:** Java services on small machine types boot, die, reboot.
+
+**Cause:** default JVM heap sizing fights small-VM memory limits.
+
+**Platform handling:** automatic. Sizing rules pick adequate machine
+types, the runtime gets `JAVA_TOOL_OPTIONS` memory bounds and a
+restart policy, and a learned lesson steers generation away from
+undersized configurations — this failure class went from our worst to
+consistently green in the campaigns.
+
+## When self-healing gives up
+
+Auto-repair is bounded (≤5 repair attempts per deployment; see
+[How self-healing works](/concepts/self-healing)). When the ladder
+gives up, the run log shows every attempt and the final finding, and
+the partially-repaired Terraform is preserved for inspection. Read
+the last gate finding first — it names the blocking error. If it's in
+the classes above, the fix is usually yours (quotas, app health path);
+otherwise contact support with the deployment ID.
+
+## See also
+
+- [Connect GCP](/connect-clouds/gcp) — connection-time problems (403s, WIF)
+- [Troubleshooting AWS deployments](/troubleshooting/deployments-aws)
+- [How self-healing works](/concepts/self-healing)
+- [Public reliability ledger](https://proof.hivedeploy.in) — every failure class, with evidence
