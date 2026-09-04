@@ -1,0 +1,215 @@
+---
+title: GCP project, billing & IAM issues
+description: Infrastructure-level failures that block GCP deployments before your app is ever at fault — billing states, new-project IAM gaps, quotas, and identity propagation.
+diataxis: how-to
+---
+
+import { Callout } from '../../components/Callout'
+
+Some deployment failures have nothing to do with your application or
+its infrastructure code — they come from the **state of the GCP project
+itself**: billing, IAM defaults on new projects, quotas, and identity
+propagation. Every pattern on this page was hit and root-caused in our
+reliability campaigns. For each: the exact error text you'll see, the
+real cause, and the fix.
+
+<Callout type="info">
+The platform classifies these as **environmental** — it will not burn
+repair attempts rewriting your infrastructure code for a problem that
+lives in project setup. The run log names the blocking error; this page
+maps each one to its remediation.
+</Callout>
+
+## Billing account closed or delinquent
+
+**Symptom:** deployments fail at resource creation with either of:
+
+```
+Error 403: This API method requires billing to be enabled.
+Please enable billing on project ...
+```
+
+```
+Error 403: The billing account for the owning project is disabled
+in state delinquent
+```
+
+**Cause:** the billing **account** (not the project link) is closed —
+a payment failed, an invoice is overdue, or the account was suspended.
+Two things trip people up:
+
+1. `billingEnabled: true` on the *project* only means a billing account
+   is **linked** — it says nothing about whether that account is open.
+2. **Paying the outstanding bill does not reopen a closed account.**
+   After the balance settles, the account still needs an explicit
+   *Reopen* in the billing console.
+
+**Fix:**
+
+```bash
+# the check that actually matters — must show open: True
+gcloud billing accounts list \
+  --format='table(name.basename(),displayName,open)'
+```
+
+If `open` is `False`: go to the [GCP billing console](https://console.cloud.google.com/billing)
+→ select the account → verify the payment shows **completed** (card
+re-verification failures are silent and common) → click **Reopen
+account**. If everything looks settled and it stays closed, only
+Google Cloud billing support can see the block reason.
+
+Alternatively, link the project to a different, open billing account:
+
+```bash
+gcloud billing projects link PROJECT_ID --billing-account=NEW_ACCOUNT_ID
+```
+
+Allow a few minutes of propagation after any billing change before
+retrying a deployment.
+
+## Cloud Build fails immediately: source 403 (new projects)
+
+**Symptom:** image builds fail at submit — before any build step runs:
+
+```
+could not resolve source: googleapi: Error 403:
+NNNN-compute@developer.gserviceaccount.com does not have
+storage.objects.get access to the Google Cloud Storage object
+```
+
+**Cause:** on **newly created projects**, Cloud Build executes as the
+project's *default compute service account* — and Google no longer
+grants that account the storage/build roles that legacy projects had
+by default. The build cannot even read its own uploaded source. This
+is a project-setup gap, **not** a Dockerfile or build-config defect —
+no change to your application or infrastructure code can fix it.
+
+**Fix:** grant the compute default SA the build roles once per project:
+
+```bash
+PROJECT=your-project-id
+PROJNUM=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
+CSA=$PROJNUM-compute@developer.gserviceaccount.com
+
+for R in roles/storage.objectViewer roles/artifactregistry.writer \
+         roles/logging.logWriter roles/cloudbuild.builds.builder; do
+  gcloud projects add-iam-policy-binding $PROJECT \
+    --member="serviceAccount:$CSA" --role="$R" --quiet
+done
+```
+
+Verify with a trivial build before redeploying:
+
+```bash
+mkdir /tmp/buildprobe && cd /tmp/buildprobe
+printf 'FROM alpine:3.20\nRUN echo ok\n' > Dockerfile
+printf 'steps:\n- name: gcr.io/cloud-builders/docker\n  args: [build, -t, probe, .]\n' > cloudbuild.yaml
+gcloud builds submit . --project=$PROJECT --config=cloudbuild.yaml
+```
+
+`STATUS: SUCCESS` means the pipeline is healthy.
+
+## Service account impersonation fails: 404 "Account deleted"
+
+**Symptom:** deployments fail before any resource is touched:
+
+```
+SA impersonation failed: 404 { "message": "Account deleted: NNNN..." }
+```
+
+**Cause:** the deploy service account referenced by your cloud
+connection no longer exists — it was deleted (often by overzealous
+cleanup tooling or scripts sweeping "unused" service accounts). A
+cached credential can mask the deletion for up to an hour, so the
+failure may appear delayed.
+
+**Fix:**
+
+1. Recreate the service account with the same name, or create a new
+   one and update the cloud connection's `service_account`.
+2. Re-apply the project roles and the `roles/iam.workloadIdentityUser`
+   binding (see [Connect GCP](/connect-clouds/gcp) — the binding must
+   target `principalSet://...attribute.org_id/YOUR_ORG_ID`).
+3. If you run cleanup automation, **allowlist the deploy identity** by
+   its exact email — never rely on name-prefix guessing.
+
+## IAM and WIF changes take minutes to propagate
+
+**Symptom:** right after creating or rebinding a service account /
+WIF provider, token exchange fails with `PERMISSION_DENIED` on
+`iam.serviceAccounts.getAccessToken` — then starts working on its own.
+
+**Cause:** Google IAM propagation. New bindings routinely take **2–7
+minutes** to become effective; billing changes similarly.
+
+**Fix:** wait and retry. If it still fails after ~10 minutes, the
+binding itself is wrong — most commonly the WIF member form (see
+[Cloud connect 403 errors](/troubleshooting/cloud-403)).
+
+## Default quotas on new projects are low
+
+**Symptom:** deployments fail with quota errors, or an apply hangs
+waiting for capacity that never arrives. New projects start with
+limits like:
+
+| Quota (per region) | New-project default | Comfortable minimum |
+|---|---|---|
+| In-use external IPs | 4 | 16 |
+| vCPUs | 32 | 64 |
+| Persistent SSD | 250 GB | 500 GB |
+
+A single VM+LB deployment can hold 2–3 external IPs; a GKE cluster
+plus a managed instance group approaches the CPU floor quickly.
+
+**Fix:** request increases up front (approval for modest bumps is
+usually minutes to hours):
+
+```bash
+gcloud alpha quotas preferences create --project=$PROJECT \
+  --service=compute.googleapis.com \
+  --quota-id=IN-USE-ADDRESSES-per-project-region \
+  --preferred-value=16 --dimensions=region=us-east1 \
+  --email=you@example.com \
+  --justification="Deployment platform needs external IP headroom"
+```
+
+Repeat for `CPUS-per-project-region` (value 64). Check current usage
+any time with `gcloud compute regions describe REGION`.
+
+## GKE control plane briefly unreachable after cluster create
+
+**Symptom:** the first operations against a freshly created cluster
+fail with `dial tcp ...:443: i/o timeout`, sometimes followed by
+`Saved plan is stale`.
+
+**Cause:** control-plane endpoint programming (and authorized-networks
+propagation) lags cluster creation by a few minutes. It is weather,
+not a defect.
+
+**Platform handling:** automatic — the platform retries with a
+bounded delayed reconcile instead of failing the deployment or
+rewriting your infrastructure code. If the endpoint stays unreachable
+past the retry budget, check the cluster's authorized networks
+against your platform's egress IP.
+
+## Requirements checklist for a fresh GCP project
+
+Run through this once and the classes above cannot occur:
+
+1. **Billing account is `open: True`** (not merely linked)
+2. **APIs enabled** — see the full list in
+   [Connect GCP](/connect-clouds/gcp#enable-apis); at minimum:
+   compute, container, run, cloudbuild, artifactregistry,
+   secretmanager, storage, logging, monitoring, iamcredentials, sts
+3. **Compute default SA has the four build roles** (section above)
+4. **Deploy SA + WIF binding** per [Connect GCP](/connect-clouds/gcp),
+   with the `attribute.org_id` member form
+5. **Quotas raised** — IPs ≥ 16, vCPUs ≥ 64 in your deploy region
+6. **Cleanup automation allowlists** the deploy SA and any
+   long-lived backing VMs by exact name
+
+## See also
+
+- [Connect GCP](/connect-clouds/gcp) — first-time WIF setup
+- [Cloud connect 403 errors](/troubleshooting/cloud-403) — binding-form mistakes
+- [Troubleshooting GCP deployments](/troubleshooting/deployments-gcp) — app/infra-level failure classes

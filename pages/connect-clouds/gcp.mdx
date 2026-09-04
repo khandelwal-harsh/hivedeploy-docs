@@ -21,8 +21,10 @@ After connecting:
 
 ## Prerequisites
 
-- A GCP project (active, with billing enabled if you'll deploy
-  billable resources)
+- A GCP project (active) whose **billing account is open** — check
+  with `gcloud billing accounts list`: the `open` column must read
+  `True`. A linked-but-closed account fails every resource create;
+  see [GCP project, billing & IAM issues](/troubleshooting/gcp-project-setup)
 - `gcloud` CLI installed and authenticated to that project
 - A few minutes — the whole setup is ~5-10 minutes for the first
   project; subsequent projects are similar
@@ -50,6 +52,28 @@ gcloud services enable \
   monitoring.googleapis.com \
   --project=YOUR_PROJECT_ID
 ```
+
+<Callout type="warning">
+**New projects need one more grant.** On freshly created projects,
+Cloud Build runs as the project's *default compute service account* —
+and Google no longer grants it the storage/build roles legacy projects
+had. Without them, every image build dies at submit with a
+`storage.objects.get` 403. Grant once per project:
+
+```bash
+PROJNUM=$(gcloud projects describe YOUR_PROJECT_ID --format='value(projectNumber)')
+for R in roles/storage.objectViewer roles/artifactregistry.writer \
+         roles/logging.logWriter roles/cloudbuild.builds.builder; do
+  gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="serviceAccount:$PROJNUM-compute@developer.gserviceaccount.com" \
+    --role="$R" --quiet
+done
+```
+
+Also note new-project **quota defaults are low** (4 external IPs,
+32 vCPUs per region) — request increases before heavy use. Details in
+[GCP project, billing & IAM issues](/troubleshooting/gcp-project-setup).
+</Callout>
 
 The first three (`sts`, `iamcredentials`, `cloudresourcemanager`) are
 required for WIF authentication itself. The rest are what application
