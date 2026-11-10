@@ -4,7 +4,7 @@
   "private": true,
   "description": "Customer-facing documentation site for Hivedeploy",
   "engines": {
-    "node": ">=20",
+    "node": "24.x",
     "pnpm": ">=9"
   },
   "packageManager": "pnpm@9.15.0",
