@@ -200,12 +200,18 @@ Run through this once and the classes above cannot occur:
 2. **APIs enabled** — see the full list in
    [Connect GCP](/connect-clouds/gcp#enable-apis); at minimum:
    compute, container, run, cloudbuild, artifactregistry,
-   secretmanager, storage, logging, monitoring, iamcredentials, sts
-3. **Compute default SA has the four build roles** (section above)
-4. **Deploy SA + WIF binding** per [Connect GCP](/connect-clouds/gcp),
+   secretmanager, storage, logging, monitoring, iam, serviceusage,
+   iamcredentials, sts
+3. **Compute default SA has the build roles** (section above) —
+   `roles/cloudbuild.builds.builder` is the one that matters
+4. **Deploy SA holds the full role set** from
+   [Connect GCP, Step 3](/connect-clouds/gcp) — 17 roles verified
+   against a live project on 2026-11-10, not the four "starting
+   point" roles older copies of that page listed
+5. **Deploy SA + WIF binding** per [Connect GCP](/connect-clouds/gcp),
    with the `attribute.org_id` member form
-5. **Quotas raised** — IPs ≥ 16, vCPUs ≥ 64 in your deploy region
-6. **Cleanup automation allowlists** the deploy SA and any
+6. **Quotas raised** — IPs ≥ 16, vCPUs ≥ 64 in your deploy region
+7. **Cleanup automation allowlists** the deploy SA and any
    long-lived backing VMs by exact name
 
 ## See also

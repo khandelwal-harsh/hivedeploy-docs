@@ -50,6 +50,8 @@ gcloud services enable \
   secretmanager.googleapis.com \
   logging.googleapis.com \
   monitoring.googleapis.com \
+  iam.googleapis.com \
+  serviceusage.googleapis.com \
   --project=YOUR_PROJECT_ID
 ```
 
@@ -70,6 +72,12 @@ for R in roles/storage.objectViewer roles/artifactregistry.writer \
 done
 ```
 
+`roles/cloudbuild.builds.builder` is the one that matters — it carries the
+source-read, log-write and registry-upload permissions a build needs. The
+other three are narrower equivalents for projects that prefer to grant them
+individually. Check which account your builds run as with
+`gcloud builds get-default-service-account --project=YOUR_PROJECT_ID`.
+
 Also note new-project **quota defaults are low** (4 external IPs,
 32 vCPUs per region) — request increases before heavy use. Details in
 [GCP project, billing & IAM issues](/troubleshooting/gcp-project-setup).
@@ -79,10 +87,14 @@ The first three (`sts`, `iamcredentials`, `cloudresourcemanager`) are
 required for WIF authentication itself. The rest are what application
 deployments actually use: `run`/`cloudbuild`/`artifactregistry` for
 container builds and Cloud Run services, `secretmanager` for injected
-app credentials, and `logging`/`monitoring` for the live Logs and
-Metrics panels on every deployment. Extend the list for extra
-services — e.g. add `sqladmin.googleapis.com` if deploying Cloud SQL,
-`cloudkms.googleapis.com` for KMS-protected resources.
+app credentials, `logging`/`monitoring` for the live Logs and Metrics
+panels on every deployment, `iam` because deployments create their own
+per-workload service accounts, and `serviceusage` so the deployer can
+confirm a service is enabled before it plans against it. Enable these
+too when your deployments use them: `cloudkms.googleapis.com`
+(KMS-protected disks and backups), `servicenetworking.googleapis.com`
+and `sqladmin.googleapis.com` (Cloud SQL on private IP),
+`dns.googleapis.com` (managed zones), `pubsub.googleapis.com`.
 
 ### Step 1 — Create a Workload Identity Pool
 
@@ -134,25 +146,51 @@ gcloud iam service-accounts create orch-deployer \
   --display-name="AI Orchestrator Deployer"
 ```
 
-Grant the SA whatever roles your deployments need. Start narrow — you
-can always add more later:
+These are the roles a production-equivalent project runs with — the set
+was verified against a live project on 2026-11-10, after every GCP
+deployment campaign to date. Every deployment needs the first group;
+grant the others for the workloads you deploy:
 
 ```bash
 PROJECT_ID=$(gcloud config get-value project)
 SA_EMAIL="orch-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
 
-# Add roles based on what you'll deploy. These are common starting
-# points; trim/expand to fit your actual deployment workloads.
 for role in \
-  roles/container.clusterAdmin \
-  roles/compute.networkAdmin \
+  roles/compute.admin \
+  roles/iam.serviceAccountAdmin \
+  roles/iam.serviceAccountUser \
+  roles/resourcemanager.projectIamAdmin \
   roles/storage.admin \
-  roles/iam.serviceAccountUser; do
+  roles/serviceusage.serviceUsageConsumer \
+  roles/logging.logWriter \
+  roles/logging.viewer \
+  roles/monitoring.metricWriter \
+  roles/monitoring.viewer \
+  roles/container.admin \
+  roles/run.admin \
+  roles/cloudbuild.builds.editor \
+  roles/artifactregistry.admin \
+  roles/secretmanager.admin \
+  roles/cloudkms.admin \
+  roles/storage.hmacKeyAdmin; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:${SA_EMAIL}" \
-    --role="$role"
+    --role="$role" --quiet
 done
 ```
+
+| Group | Roles | Why deployments need them |
+|---|---|---|
+| Every deployment | `compute.admin`, `iam.serviceAccountAdmin`, `iam.serviceAccountUser`, `resourcemanager.projectIamAdmin`, `storage.admin`, `serviceusage.serviceUsageConsumer` | VMs, networks, firewall rules and load balancers; a per-workload service account per deployment, bound to the roles that workload needs; state and artifact buckets; checking that an API is enabled before planning against it |
+| Logs and metrics panels | `logging.logWriter`, `logging.viewer`, `monitoring.metricWriter`, `monitoring.viewer` | the live Logs and Metrics panels and the health evidence the self-healing loop reads |
+| Containers | `container.admin`, `run.admin`, `cloudbuild.builds.editor`, `artifactregistry.admin` | GKE clusters, Cloud Run services, image builds and the registries they push to |
+| Secrets and keys | `secretmanager.admin`, `cloudkms.admin` | injected application credentials; KMS keys for encrypted disks and backups (KMS key rings cannot be deleted, so expect them to outlive their deployments) |
+| Object-storage credentials | `storage.hmacKeyAdmin` | HMAC keys for workloads that back up to Cloud Storage through the S3-compatible API, such as MongoDB |
+
+If you only ever deploy one workload class, drop the groups you do not
+use — but keep the first two. When a deployment later fails with a
+`403` naming a permission, the role that carries it belongs in this
+list; see [Troubleshooting GCP deployments](/troubleshooting/deployments-gcp).
 
 ### Step 4 — Grant the orchestrator permission to impersonate this SA
 
