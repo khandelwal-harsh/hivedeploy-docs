@@ -55,10 +55,15 @@ function Head() {
 function Main({ children }: { children: ReactNode }) {
   const { pathname, asPath } = useRouter()
   // Nextra marks the open page with an `active` class only; assistive tech and the pill style want aria-current.
+  // Its previous / next cards show only a title; assistive tech also hears which way each goes, and the name
+  // starts with "Previous" or "Next" and keeps the visible title (WCAG 2.5.3). The next card is the one Nextra pushes right.
   useEffect(() => {
     const side = document.querySelector('.nextra-sidebar-container')
     side?.querySelectorAll('a[aria-current="page"]').forEach((a) => a.removeAttribute('aria-current'))
     side?.querySelectorAll('li.active > a').forEach((a) => a.setAttribute('aria-current', 'page'))
+    document.querySelectorAll('.dx-pn a').forEach((a) => {
+      a.setAttribute('aria-label', `${a.matches('[class~="ltr:_ml-auto"]') ? 'Next' : 'Previous'}: ${(a.textContent ?? '').trim()}`)
+    })
   }, [asPath])
   if (pathname === '/') {
     return (

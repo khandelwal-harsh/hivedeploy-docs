@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { markQuotes, wrapChangelog, wrapSteps } from '../lib/rehype-docs.mjs'
+import { markQuotes, nameTables, wrapChangelog, wrapSteps } from '../lib/rehype-docs.mjs'
 import { em, h2, h3, hr, p, quote, root, strong, tag, text, toText, ul } from './lib/hast'
 
 const ws = () => text('\n')
@@ -117,5 +117,38 @@ describe('wrapChangelog', () => {
     const s = JSON.stringify(t)
     wrapChangelog(t, { path: '/repo/pages/quickstart.mdx' })
     expect(JSON.stringify(t)).toBe(s)
+  })
+})
+
+describe('nameTables', () => {
+  const table = () => ({ type: 'element', tagName: 'table', properties: {}, children: [] }) as Parameters<typeof tag>[0]
+  const code = (t: string) => ({ type: 'element', tagName: 'code', properties: {}, children: [text(t)] }) as Parameters<typeof tag>[0]
+  it('labels each table with the text of the nearest heading before it, at any depth, inline code included', () => {
+    const a = table()
+    const b = table()
+    const c = table()
+    const h = { type: 'element', tagName: 'h3', properties: { id: 'x' }, children: [text('The '), code('X_ID'), text(' variable')] } as Parameters<typeof tag>[0]
+    const t = root(h2('req', 'Required'), ws(), a, ws(), h, p('words'), { type: 'element', tagName: 'div', properties: {}, children: [b] }, h2('more', 'More'), p('no table'), quote(p('x')), c)
+    nameTables(t)
+    expect(a.properties!.dataHeading).toBe('Required')
+    expect(b.properties!.dataHeading).toBe('The X_ID variable')
+    expect(c.properties!.dataHeading).toBe('More')
+  })
+  it('a table with no heading before it gets no label', () => {
+    const a = table()
+    const t = root(p('intro'), a, h2('later', 'Later'))
+    nameTables(t)
+    expect(a.properties!.dataHeading).toBeUndefined()
+  })
+  it('finds a heading inside a step wrapper, and trims and collapses its whitespace', () => {
+    const a = table()
+    const t = root(h2('s', 'Step 1 — A'), p('x'), a)
+    wrapSteps(t)
+    nameTables(t)
+    expect(a.properties!.dataHeading).toBe('Step 1 — A')
+    const b = table()
+    const u = root({ type: 'element', tagName: 'h4', properties: {}, children: [text('  Two\n words ')] }, b)
+    nameTables(u)
+    expect(b.properties!.dataHeading).toBe('Two words')
   })
 })

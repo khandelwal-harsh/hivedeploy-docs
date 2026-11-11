@@ -13,6 +13,20 @@ export function DocsHeader(_props: { items?: unknown }) {
   const { menu, setMenu } = useMenu()
   const home = path === '/'
   const tabs = useRef<HTMLElement>(null)
+  const menuBtn = useRef<HTMLButtonElement>(null)
+
+  // The phone drawer is an overlay with a scrim, so Esc closes it and focus goes back to the button that opened it.
+  // An Esc the search palette has already handled (defaultPrevented) only closes the palette.
+  useEffect(() => {
+    if (!menu) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      setMenu(false)
+      menuBtn.current?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menu, setMenu])
 
   // Home only: a spotlight and a light streak follow the pointer across the tabs (wire.js 69-75).
   useEffect(() => {
@@ -69,9 +83,12 @@ export function DocsHeader(_props: { items?: unknown }) {
             {GET_STARTED.label} <span className="arrow" aria-hidden="true">→</span>
           </a>
         </div>
-        <button type="button" className="menu-btn" aria-label="Open menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" focusable="false">
+        <button ref={menuBtn} type="button" className="menu-btn" aria-label="Open menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+          <svg className="bars" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" focusable="false">
             <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+          <svg className="x" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" focusable="false">
+            <path d="M6 6l12 12M18 6 6 18" />
           </svg>
         </button>
       </div>

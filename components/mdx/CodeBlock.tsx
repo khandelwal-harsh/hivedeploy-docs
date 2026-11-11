@@ -20,20 +20,23 @@ export function chipFor(filename: string | undefined, language: string | undefin
 export function CodeBlock({ children, className, 'data-filename': filename, 'data-copy': copy, 'data-language': language, ...props }: Props) {
   const wrap = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const [done, setDone] = useState(false)
+  // 'copied' shows the check; either result is announced, politely, for 1.2 s
+  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
   useEffect(() => () => clearTimeout(timer.current), [])
   const chip = chipFor(filename, language)
+  const done = status === 'copied'
 
   async function onCopy() {
     const text = wrap.current?.querySelector('code')?.textContent ?? ''
+    let next: 'copied' | 'failed' = 'copied'
     try {
       await navigator.clipboard.writeText(text.replace(/\n$/, ''))
     } catch {
-      return
+      next = 'failed'
     }
-    setDone(true)
+    setStatus(next)
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => setDone(false), 1200)
+    timer.current = setTimeout(() => setStatus('idle'), 1200)
   }
 
   return (
@@ -52,7 +55,7 @@ export function CodeBlock({ children, className, 'data-filename': filename, 'dat
               </svg>
             </button>
             <span className="sr" aria-live="polite">
-              {done ? 'Copied' : ''}
+              {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : ''}
             </span>
           </>
         ) : null}

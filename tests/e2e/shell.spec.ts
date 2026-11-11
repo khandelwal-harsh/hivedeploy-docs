@@ -128,3 +128,36 @@ test('the pagination the redesign adds stays on the site', async ({ page }) => {
   await page.goto('/connect-clouds/aws')
   for (const href of await page.locator('.dx-pn a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))) expect(href.startsWith('/'), href).toBe(true)
 })
+
+test('previous / next tell assistive tech which way they go, and each name holds its visible text (WCAG 2.5.3)', async ({ page }) => {
+  await page.goto('/connect-clouds/aws')
+  await page.waitForLoadState('networkidle')
+  const pn = page.locator('.dx-pn')
+  const check = async () => {
+    const links = await pn.locator('a').evaluateAll((as) => as.map((a) => a.textContent!.trim()))
+    expect(links).toHaveLength(2)
+    await expect(pn.getByRole('link', { name: `Previous: ${links[0]}`, exact: true })).toHaveCount(1)
+    await expect(pn.getByRole('link', { name: `Next: ${links[1]}`, exact: true })).toHaveCount(1)
+  }
+  await check()
+  // after a client-side move the names follow the new page
+  const href = (await pn.locator('a').last().getAttribute('href'))!
+  await pn.locator('a').last().click()
+  await expect(page).toHaveURL(new RegExp(`${href}$`))
+  await expect(async () => check()).toPass()
+})
+
+test('article pages log no warnings or errors', async ({ page }) => {
+  const logged: string[] = []
+  page.on('console', (m) => {
+    if (m.type() === 'warning' || m.type() === 'error') logged.push(`${m.type()}: ${m.text()}`)
+  })
+  page.on('pageerror', (e) => logged.push(`pageerror: ${e.message}`))
+  // Vercel serves the analytics script on its own hosts only; locally it 404s, so stand in for the host.
+  await page.route('**/_vercel/insights/script.js', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }))
+  for (const path of ['/quickstart', '/connect-clouds/aws', '/reference/env-vars']) {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+  }
+  expect(logged).toEqual([])
+})

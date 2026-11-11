@@ -117,3 +117,16 @@ test('h5 and h6 are sized below h4 and keep the heading weight', async ({ page }
   expect(r.h5!.weight).toBe('600')
   expect(r.h6!.weight).toBe('600')
 })
+
+test('a failed copy says "Copy failed" politely and shows no check', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('denied')) } })
+  })
+  await page.goto('/connect-clouds/aws')
+  await page.waitForLoadState('networkidle')
+  const block = page.getByTestId('code-block').first()
+  const btn = block.getByRole('button', { name: 'Copy code' })
+  await btn.click()
+  await expect(block.locator('[aria-live="polite"]')).toHaveText('Copy failed')
+  await expect(btn).not.toHaveClass(/done/)
+})

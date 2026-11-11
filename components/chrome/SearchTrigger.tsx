@@ -1,13 +1,13 @@
 import { openSearch } from '../../lib/search-store'
 
-/** The header's trigger is `search-trigger`; the drawer's copy (no className) is `search-trigger-menu`. */
+/** The header's trigger is `search-trigger`; the drawer's copy (no className) is `search-trigger-menu`.
+ *  Its name is its visible text (WCAG 2.5.3); where the text is hidden it is only visually hidden, so the name stays. */
 export function SearchTrigger({ className = '' }: { className?: string }) {
   return (
     <button
       type="button"
       data-testid={className.includes('hdr-s') || className.includes('hero-s') ? 'search-trigger' : 'search-trigger-menu'}
       className={`dx-search ${className}`.trim()}
-      aria-label="Search documentation"
       aria-keyshortcuts="Meta+K Control+K"
       onClick={() => openSearch()}
     >

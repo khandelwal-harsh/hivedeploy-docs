@@ -12,4 +12,5 @@ export interface HastRoot {
 export function wrapSteps(tree: HastRoot): HastRoot
 export function markQuotes(tree: HastRoot): HastRoot
 export function wrapChangelog(tree: HastRoot, file?: unknown): HastRoot
+export function nameTables(tree: HastRoot): HastRoot
 export function rehypeDocs(): (tree: HastRoot, file: unknown) => void

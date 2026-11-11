@@ -123,3 +123,21 @@ test('the step number is decoration: its content carries an empty alt', async ({
   const c = await page.locator('.dx-step').first().evaluate((e) => getComputedStyle(e, '::before').content)
   expect(c).toMatch(/"01"/)
 })
+
+test('each table region is named from the heading before it', async ({ page }) => {
+  for (const path of ['/reference/env-vars', '/connect-clouds/aws', '/reference/agents-list']) {
+    await page.goto(path)
+    const r = await page.locator('article .dx-table').evaluateAll((bs) =>
+      bs.map((b) => {
+        let near = ''
+        for (const h of document.querySelectorAll('article :is(h2, h3, h4, h5, h6)'))
+          if (h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) near = h.textContent!.trim()
+        return { got: b.getAttribute('aria-label'), want: near ? `Table: ${near}` : 'Table' }
+      }),
+    )
+    expect(r.length, path).toBeGreaterThan(0)
+    for (const { got, want } of r) expect(got, path).toBe(want)
+  }
+  await page.goto('/reference/env-vars')
+  await expect(page.getByRole('region', { name: 'Table: Required', exact: true })).toHaveCount(1)
+})

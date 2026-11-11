@@ -43,4 +43,8 @@ describe('tokens', () => {
         /--(surface-\d|foreground|border\b|info\b|ai\b|ai-strong|accent-highlight|card\b|primary\b|ring\b)/,
       )
   })
+  it('no rule targets a page-head element where it never lives', () => {
+    // the "Last updated" line is in .dx-meta, never in the feedback row
+    expect(read('styles/components.css')).not.toMatch(/\.dx-fb\s+\.upd/)
+  })
 })

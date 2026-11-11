@@ -42,32 +42,70 @@
 .dx-hdr .btn { height: 34px; padding: 0 13px; font-size: 13.5px; border-radius: 8px; }
 .menu-btn { display: none; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text-strong); place-items: center; cursor: pointer; }
 .menu-btn:hover { background: var(--glass-hover); }
+/* open, the bars turn to a cross: the header stays above the drawer, so this button is its close control */
+.menu-btn .x, .menu-btn[aria-expanded="true"] .bars { display: none; }
+.menu-btn[aria-expanded="true"] .x { display: block; }
 
 @media (max-width: 1279px) {
-  .dx-search.hdr-s { width: auto; padding: 0 10px; gap: 8px; }
-  .dx-search.hdr-s .ph { display: none; }
+  .dx-search.hdr-s { position: relative; width: auto; padding: 0 10px; gap: 8px; }
+  /* the words leave the screen but stay the button's name (WCAG 2.5.3: the name is the visible label) */
+  .dx-search.hdr-s .ph { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; flex: none; }
 }
 @media (max-width: 1023px) {
   .dx-tabs, .dx-hdr .links { display: none; }
 }
+/* Phones. Search and menu are touch targets: they never shrink, and are 44 px square wherever the row has room
+   (380 px up); below that they are 36 px wide, over WCAG 2.5.8's 24. The rest of the row gives way first.
+   The target is the button; the box you see is the board's (38 square, the search 38 by 34), drawn inside it. */
 @media (max-width: 767px) {
-  .dx-hdr-in { padding: 0 16px; gap: 10px; }
+  .dx-hdr-in { padding: 0 16px; gap: 8px; }
   .crumb-sep, .nav-cta .btn.ghost { display: none; }
-  .dx-search.hdr-s { width: 38px; padding: 0; justify-content: center; margin-left: auto; }
-  .dx-search.hdr-s .ph, .dx-search.hdr-s .kbd { display: none; }
+  .dx-search.hdr-s, .menu-btn { position: relative; isolation: isolate; flex: none; width: 44px; height: 44px; border-color: transparent; background: transparent; outline-offset: -1px; }
+  .dx-search.hdr-s::before, .menu-btn::before { content: ''; position: absolute; z-index: -1; inset: 3px; border-radius: 10px; border: 1px solid var(--line); }
+  .dx-search.hdr-s::before { inset: 5px 3px; border-radius: 9px; border-color: var(--line-strong); background: var(--glass); }
+  .dx-search.hdr-s:hover, .menu-btn:hover { border-color: transparent; background: transparent; }
+  .dx-search.hdr-s:hover::before { border-color: var(--line-hover); background: var(--glass-hover); }
+  .menu-btn:hover::before { background: var(--glass-hover); }
+  .menu-btn[aria-expanded="true"]::before { border-color: var(--accent-edge); }
+  .dx-search.hdr-s { padding: 0; justify-content: center; margin-left: auto; }
+  .dx-search.hdr-s .kbd { display: none; }
   .dx-hdr .nav-cta { margin-left: 0; }
   .menu-btn { display: grid; }
 }
-/* 320 to 359: the header's five items do not fit in 320 px, so the page scrolled sideways. */
-@media (max-width: 359px) {
+@media (max-width: 439px) {
   .dx-hdr-in { padding: 0 12px; gap: 6px; }
+  .dx-hdr .btn { padding: 0 10px; }
+  .dx-hdr .btn .arrow { display: none; }  /* as www's header does on narrow phones */
+}
+@media (max-width: 379px) {
+  .dx-search.hdr-s, .menu-btn { width: 36px; height: 40px; outline-offset: 2px; }
+  .dx-search.hdr-s::before { inset: 3px 0; }
+  .menu-btn::before { inset: 1px 0; }
+  .dx-hdr .btn { padding: 0 8px; font-size: 13px; }
+}
+/* 320 to 359: the "Docs" tag goes, or the row would scroll sideways; the page title still names the site. */
+@media (max-width: 359px) {
   .dx-tag { display: none; }
-  .dx-hdr .btn { padding: 0 6px; font-size: 13px; }
   .dx-hdr .brand { gap: 8px; }
-  .dx-search.hdr-s, .menu-btn { flex: none; }
 }
 /* The drawer is Nextra's sidebar; its search trigger sits full width at the top. */
 .nextra-sidebar-container .dx-search { width: 100%; margin: 0; cursor: pointer; }
+
+/* ---------- phone drawer (board PD02) ---------- */
+/* Below 768 Nextra shows its sidebar as a full-width sheet that slides down from the top (0.6 s) over a scrim that
+   fades in 1.5 s. Here it is the board's left panel, 86% wide up to 336 px, from the header's foot to the bottom,
+   the header kept above it so its menu button closes it. It appears and goes without motion (D12: article pages
+   answer only hover and focus). Closed it is also hidden, so Tab never walks through links that are off-screen. */
+@media (max-width: 767px) {
+  aside.nextra-sidebar-container { top: var(--header-h); bottom: 0; width: 86%; max-width: 336px; padding-top: 0; border-right: 1px solid var(--line-strong); box-shadow: var(--shadow); transition: none !important; }
+  aside.nextra-sidebar-container[class~="max-md:[transform:translate3d(0,-100%,0)]"] { transform: translateX(-102%); visibility: hidden; box-shadow: none; }
+  aside.nextra-sidebar-container[class~="max-md:[transform:translate3d(0,0,0)]"] { transform: none; }
+  aside.nextra-sidebar-container > div:has(> .dx-search) { padding: 14px 12px 0; }
+  aside.nextra-sidebar-container .nextra-scrollbar { padding: 8px 12px 24px; }
+  /* the scrim is Nextra's overlay (the aside's previous sibling), in the board's tint; the header (z 40) stays above it */
+  div:has(+ aside.nextra-sidebar-container) { transition: none !important; }
+  div[class~="_fixed"]:has(+ aside.nextra-sidebar-container) { background: rgba(4,4,6,.6) !important; }
+}
 
 /* ---------- footer ---------- */
 .dx-footer { margin-top: 64px; padding: 72px 0 0; border-top: 1px solid var(--line); background: var(--bg); color: var(--text); font-family: var(--font-sans); line-height: 1.5; }
@@ -110,7 +148,6 @@
 @media (max-width: 767px) {
   .dx-title { font-size: 31px; }
   .dx-meta { border-bottom: 0; margin-bottom: 0; padding-bottom: 14px; }
-  .dx-fb .upd { margin-left: 0; width: 100%; }
 }
 
 /* Contents rail. Nextra's own <nav class="nextra-toc"> is the 232 px column from 1280 px up and is

@@ -43,6 +43,10 @@ article.nextra-content > main { padding-top: 24px; font-size: 16px; line-height:
 article.nextra-content .dx-body:not(:has(main)) { padding-top: 24px; }
 @media (min-width: 768px) {
   article.nextra-content > main { max-width: 720px; padding-left: 0; padding-right: 0; }
+  /* The column keeps 32 px from the sidebar rule and from the rail or the window edge. Without it, from 768 to about
+     1000 px the 720 column filled the space between them and the text ran into both. Where the column is a full 720
+     it is centred as before, so wide layouts (and the step squares from 1340) do not move. */
+  article.nextra-content:has(> main) { padding-left: 32px; padding-right: 32px; }
 }
 
 .dx-body p, .dx-body li { line-height: 1.7; }
