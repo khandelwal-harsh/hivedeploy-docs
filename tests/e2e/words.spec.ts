@@ -75,9 +75,9 @@ for (const { file, path } of PAGES)
     const src = mdxWords(file)
     const got = toks(all)
     expect(src.length, 'the source has words').toBeGreaterThan(50)
-    // nothing dropped, nothing shown twice or added
-    expect(wordDiff(src, got)).toEqual({ missing: [], extra: [] })
-    expect(inOrder(src, got)).toEqual({ ok: true })
+    // Soft, so one run reports every check that fails. Nothing dropped, nothing shown twice or added:
+    expect.soft(wordDiff(src, got), 'multiset').toEqual({ missing: [], extra: [] })
+    expect.soft(inOrder(src, got), 'order').toEqual({ ok: true })
     // no source word lives only in transparent, zero-size or clipped text
-    expect(unpainted(src, toks(painted))).toEqual([])
+    expect.soft(unpainted(src, toks(painted)), 'painted').toEqual([])
   })
