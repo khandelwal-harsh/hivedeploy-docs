@@ -11,42 +11,42 @@
   font-family: var(--font-sans);
 }
 
-/* Code blocks: surface-2 background, mono */
+/* Code blocks: raised background, mono */
 .nextra-code-block pre,
 .nextra-code pre,
 code {
   font-family: var(--font-mono) !important;
-  background: var(--surface-2) !important;
+  background: var(--raised) !important;
 }
 
 /* Surface tokens for Nextra chrome */
 .nextra-nav-container > nav {
-  background: var(--surface-1) !important;
-  border-bottom: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  border-bottom: 1px solid var(--line) !important;
 }
 
 .nextra-sidebar-container {
-  background: var(--surface-1) !important;
-  border-right: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  border-right: 1px solid var(--line) !important;
 }
 
-/* Sidebar active item: surface-3 bg + 2px left info border */
+/* Sidebar active item: glass bg + 2px left border */
 .nextra-sidebar-container a[aria-current="page"] {
-  background: var(--surface-3) !important;
-  border-left: 2px solid var(--info) !important;
-  color: var(--foreground-strong) !important;
+  background: var(--glass-hover) !important;
+  border-left: 2px solid var(--text-strong) !important;
+  color: var(--text-strong) !important;
 }
 
 /* Sidebar hover */
 .nextra-sidebar-container a:hover {
-  background: var(--surface-3) !important;
+  background: var(--glass-hover) !important;
 }
 
 /* Search input */
 .nextra-search input {
-  background: var(--surface-2) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--foreground) !important;
+  background: var(--raised) !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text) !important;
   font-family: var(--font-mono) !important;
 }
 
@@ -55,20 +55,21 @@ code {
 .nextra-content h2,
 .nextra-content h3,
 .nextra-content h4 {
-  color: var(--foreground-strong) !important;
+  color: var(--text-strong) !important;
   font-family: var(--font-sans) !important;
   letter-spacing: -0.01em;
 }
 
-/* Body */
-.nextra-content {
-  color: var(--foreground);
+/* Body: Nextra paints article text slate-200 through a dark: utility, so this one is forced */
+.nextra-content,
+.nextra-content article {
+  color: var(--text) !important;
 }
 
 /* Inline code in prose */
 .nextra-content code:not(pre code) {
-  background: var(--surface-2) !important;
-  border: 1px solid var(--border) !important;
+  background: var(--raised) !important;
+  border: 1px solid var(--line) !important;
   border-radius: 6px;
   padding: 0.125rem 0.375rem;
   font-size: 0.875em;
@@ -76,24 +77,24 @@ code {
 
 /* Tables */
 .nextra-content table {
-  border: 1px solid var(--border) !important;
+  border: 1px solid var(--line) !important;
 }
 .nextra-content th {
-  background: var(--surface-2) !important;
+  background: var(--raised) !important;
   font-family: var(--font-mono) !important;
-  color: var(--foreground-strong) !important;
+  color: var(--text-strong) !important;
 }
 .nextra-content td {
-  border-top: 1px solid var(--border) !important;
+  border-top: 1px solid var(--line) !important;
 }
 
 /* Links */
 .nextra-content a:not(.nextra-card a) {
-  color: var(--info) !important;
+  color: var(--accent-text) !important;
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: color-mix(in srgb, var(--info) 40%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--accent-text) 40%, transparent);
 }
 .nextra-content a:hover {
-  text-decoration-color: var(--info);
+  text-decoration-color: var(--accent-text);
 }

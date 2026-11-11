@@ -1,37 +1,21 @@
 import type { AppProps } from 'next/app'
-import { JetBrains_Mono, Inter } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/react'
 import '../styles/globals.css'
 import '../styles/nextra-overrides.css'
 import '../styles/scalar-overrides.css'
-
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  weight: ['400', '500', '600'],
-  display: 'swap',
-})
-
-const sans = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  weight: ['400', '500', '600'],
-  display: 'swap',
-})
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <style jsx global>{`
         html {
-          --font-mono: ${mono.style.fontFamily};
-          --font-sans: ${sans.style.fontFamily};
-        }
-        body {
-          font-family: var(--font-sans);
+          --font-geist-sans: ${GeistSans.style.fontFamily};
+          --font-geist-mono: ${GeistMono.style.fontFamily};
         }
       `}</style>
-      <div className={`${mono.variable} ${sans.variable}`}>
+      <div className={`${GeistSans.variable} ${GeistMono.variable}`}>
         <Component {...pageProps} />
       </div>
       <Analytics />

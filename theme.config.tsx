@@ -33,13 +33,6 @@ function Head() {
       <meta name="twitter:card" content="summary_large_image" />
       <link rel="canonical" href={canonical} />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      {/* Platform design system font (Geist) — CSP allows fonts.googleapis/gstatic */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap"
-        rel="stylesheet"
-      />
     </>
   )
 }
@@ -69,8 +62,10 @@ const config: DocsThemeConfig = {
       <FeedbackWidget />
     </>
   )) as FC<{ children: ReactNode }>,
-  darkMode: true,
-  nextThemes: { defaultTheme: 'dark' },
+  darkMode: false,
+  nextThemes: { defaultTheme: 'dark', forcedTheme: 'dark' },
+  color: { hue: 44, saturation: 99 },
+  backgroundColor: { dark: '8,8,10', light: '8,8,10' },
   head: Head,
 }
 

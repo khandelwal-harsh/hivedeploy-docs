@@ -20,6 +20,9 @@ importers:
       '@vercel/og':
         specifier: 0.6.3
         version: 0.6.3
+      geist:
+        specifier: 1.9.2
+        version: 1.9.2(next@14.2.5(@playwright/test@1.65.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       glob:
         specifier: 10.4.5
         version: 10.4.5
@@ -46,10 +49,10 @@ importers:
         version: 18.3.1(react@18.3.1)
     devDependencies:
       '@axe-core/playwright':
-        specifier: ^4.14.0
+        specifier: 4.14.0
         version: 4.14.0(playwright-core@1.65.0)
       '@playwright/test':
-        specifier: ^1.65.0
+        specifier: 1.65.0
         version: 1.65.0
       '@types/node':
         specifier: 20.14.10
@@ -2314,6 +2317,11 @@ packages:
   fuse.js@7.3.0:
     resolution: {integrity: sha512-plz8RVjfcDedTGfVngWH1jmJvBvAwi1v2jecfDerbEnMcmOYUEEwKFTHbNoCiYyzaK2Ws8lABkTCcRSqCY1q4w==}
     engines: {node: '>=10'}
+
+  geist@1.9.2:
+    resolution: {integrity: sha512-UU1x2q5Khob0+i4csFvXk1Ki4DePdu7xISuXyEcj1tzQMg64oN7Kbuy4e5z5QhcUWbbvOMJNs3ZxYQqpsEMV3w==}
+    peerDependencies:
+      next: '>=13.2.0'
 
   generator-function@2.0.1:
     resolution: {integrity: sha512-SFdFmIJi+ybC0vjlHN0ZGVGHc3lgE0DxPAT0djjVg+kjOnSqclqmj0KQ7ykTOLP6YxoqOvuAODGdcHJn+43q3g==}
@@ -6878,6 +6886,10 @@ snapshots:
   functions-have-names@1.2.3: {}
 
   fuse.js@7.3.0: {}
+
+  geist@1.9.2(next@14.2.5(@playwright/test@1.65.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
+    dependencies:
+      next: 14.2.5(@playwright/test@1.65.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   generator-function@2.0.1: {}
 

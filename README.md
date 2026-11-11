@@ -25,7 +25,6 @@ pnpm dev          # http://localhost:3000
 | `pnpm typecheck` | TypeScript check |
 | `pnpm test` | Vitest run |
 | `pnpm test:watch` | Vitest watch mode |
-| `pnpm css-drift` | Compare local globals.css against frontend repo |
 
 ## Adding a new page
 

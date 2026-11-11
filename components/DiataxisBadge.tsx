@@ -13,9 +13,9 @@ const labels: Record<DiataxisType, string> = {
 
 const colors: Record<DiataxisType, string> = {
   tutorial: 'var(--ok)',
-  'how-to': 'var(--info)',
-  reference: 'var(--warn)',
-  explanation: 'var(--foreground-muted)',
+  'how-to': 'var(--text-strong)',
+  reference: 'var(--accent-text)',
+  explanation: 'var(--text-muted)',
 }
 
 export function DiataxisBadge({ type }: DiataxisBadgeProps) {

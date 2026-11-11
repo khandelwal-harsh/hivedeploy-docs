@@ -54,7 +54,7 @@ export function FeedbackWidget() {
   if (stage === 'thanks') {
     return (
       <div style={feedbackContainerStyle}>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--foreground-muted)' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
           Thanks for the feedback.
         </span>
       </div>
@@ -66,7 +66,7 @@ export function FeedbackWidget() {
       <form onSubmit={handleSubmitComment} style={feedbackContainerStyle}>
         <label
           htmlFor="feedback-comment"
-          style={{ fontFamily: 'var(--font-mono)', color: 'var(--foreground-muted)', display: 'block', marginBottom: '0.5rem' }}
+          style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}
         >
           What&apos;s missing or wrong? (optional)
         </label>
@@ -78,11 +78,11 @@ export function FeedbackWidget() {
           maxLength={1000}
           style={{
             width: '100%',
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
+            background: 'var(--raised)',
+            border: '1px solid var(--line)',
             borderRadius: '0.375rem',
             padding: '0.5rem 0.75rem',
-            color: 'var(--foreground)',
+            color: 'var(--text)',
             fontFamily: 'var(--font-sans)',
             resize: 'vertical',
           }}
@@ -95,7 +95,7 @@ export function FeedbackWidget() {
             type="button"
             onClick={handleSkip}
             disabled={submitting}
-            style={{ ...buttonStyle, background: 'transparent', border: 'none', color: 'var(--foreground-muted)' }}
+            style={{ ...buttonStyle, background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
           >
             Skip
           </button>
@@ -109,7 +109,7 @@ export function FeedbackWidget() {
       <span
         style={{
           fontFamily: 'var(--font-mono)',
-          color: 'var(--foreground-muted)',
+          color: 'var(--text-muted)',
           marginRight: '1rem',
         }}
       >
@@ -126,7 +126,7 @@ export function FeedbackWidget() {
 }
 
 const feedbackContainerStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--border)',
+  borderTop: '1px solid var(--line)',
   padding: '1rem 0',
   marginTop: '3rem',
   display: 'flex',
@@ -136,11 +136,11 @@ const feedbackContainerStyle: React.CSSProperties = {
 }
 
 const buttonStyle: React.CSSProperties = {
-  background: 'var(--surface-2)',
-  border: '1px solid var(--border-strong)',
+  background: 'var(--raised)',
+  border: '1px solid var(--line-strong)',
   borderRadius: '0.375rem',
   padding: '0.375rem 0.75rem',
-  color: 'var(--foreground)',
+  color: 'var(--text)',
   fontFamily: 'var(--font-mono)',
   fontSize: '0.875rem',
   cursor: 'pointer',

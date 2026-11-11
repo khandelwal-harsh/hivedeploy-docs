@@ -1,135 +1,92 @@
-/* Design tokens synced from frontend-ai-orchestrator/app/globals.css
-   ("Nebula Matte" system, beacon redesign) — Tailwind/shadcn imports
-   stripped; only CSS custom properties kept. Variable names unchanged
-   so nextra-overrides.css / scalar-overrides.css keep resolving. */
-
-:root, .dark {
-    /* Nebula Matte ground — solid paints, never #000 */
-    --background: #0D0D0F;
-    --surface-1: #121214;                            /* cards, sidebar */
-    --surface-2: #161619;                            /* inputs, hover */
-    --surface-3: #1B1B1F;                            /* active */
-    --surface-4: #212125;                            /* buttons */
-    --hover: rgba(255, 255, 255, .05);               /* row hover */
-
-    --foreground: #F2F1F7;                           /* body */
-    --foreground-strong: #FBFAFF;
-    --foreground-muted: #B1AEC2;
-    --foreground-faint: #8D8A9E;
-
-    --border: #28282D;                               /* hairline */
-    --border-strong: #3A3A41;
-
-    /* Semantic accents (Nebula) */
-    --ok: #34D399;
-    --warn: #FBBF24;
-    --fail: #FB7185;
-    --info: #60A5FA;
-    /* --ai is used as TEXT/link color in the docs; solid #7C3AED text on
-       the near-black ground computes ~3.4:1 (below AA). Use the platform's
-       AA-safe badge tint (violet mixed 60% toward white) for text, and
-       expose the solid violet as --ai-strong for fills/borders. */
-    --ai: #AA92FA;
-    --ai-strong: #7C3AED;
-    --accent-highlight: #EC4899;
-
-    /* Shadcn-named semantic aliases (kept for compatibility with existing primitives) */
-    --card: var(--surface-1);
-    --card-foreground: var(--foreground);
-    --popover: var(--surface-2);
-    --popover-foreground: var(--foreground);
-    --primary: var(--ai-strong);
-    --primary-foreground: #FFFFFF;
-    --secondary: var(--surface-2);
-    --secondary-foreground: var(--foreground);
-    --muted: var(--surface-2);
-    --muted-foreground: var(--foreground-muted);
-    --accent: var(--surface-3);
-    --accent-foreground: var(--foreground-strong);
-    --destructive: var(--fail);
-    --input: #131315;
-    --ring: var(--ai-strong);
-
-    --radius: 0.625rem;                              /* 10px controls */
-    --radius-sm: 0.5rem;                             /* 8px */
-    --radius-xl: 1rem;                               /* 16px tiles */
-
-    /* Sidebar */
-    --sidebar: var(--surface-1);
-    --sidebar-foreground: var(--foreground);
-    --sidebar-primary: var(--foreground-strong);
-    --sidebar-primary-foreground: var(--background);
-    --sidebar-accent: var(--surface-2);
-    --sidebar-accent-foreground: var(--foreground-strong);
-    --sidebar-border: var(--border);
-    --sidebar-ring: var(--border-strong);
-
-    /* Charts (platform spec §3) */
-    --chart-1: var(--ai-strong);
-    --chart-2: var(--accent-highlight);
-    --chart-3: #6366F1;
-    --chart-4: var(--foreground-muted);
-    --chart-5: var(--border-strong);
-
-    /* Motion tokens */
-    --motion-fast: 150ms;
-    --motion-base: 240ms;
-    --motion-slow: 400ms;
-    --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-* {
-  outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
-}
-body {
-  background: var(--background);
-  color: var(--foreground);
-  /* Platform design system typeface (loaded via <link> in theme Head) */
-  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
-}
-code, pre, kbd, samp, .nextra-code {
-  font-family: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
-}
-/* === LIGHT MODE === added for hivedeploy-docs site ===
-   nextra-theme-docs uses next-themes which toggles class="light"/"dark"
-   on <html>. The dark values above are scoped to `:root, .dark` (spec
-   0,1,0 each). To beat that, our light overrides target html.light /
-   html:not(.dark) so they have specificity (0,2,0) and (0,2,0), winning
-   the cascade whenever dark isn't active. Light ground stays neutral;
-   accents come from the same Nebula palette (violet). */
-html.light,
-html:not(.dark),
-.light,
-[data-theme='light'] {
-  --background: #fafafa;
-  --surface-1: #ffffff;
-  --surface-2: #f4f4f5;
-  --surface-3: #e4e4e7;
-  --surface-4: #d4d4d8;
-  --hover: #ececef;
-  --foreground: #18181b;
-  --foreground-strong: #09090b;
-  --foreground-muted: #52525b;
-  --foreground-faint: #a1a1aa;
-  --border: #e4e4e7;
-  --border-strong: #d4d4d8;
-  --info: #2563eb;
-  --ok: #16a34a;
-  --warn: #ca8a04;
-  --fail: #dc2626;
-  --ai: #6D28D9;          /* violet dark enough for AA text on light ground */
-  --ai-strong: #7C3AED;
-  --accent-highlight: #DB2777;
-  --primary: var(--ai-strong);
-  --primary-foreground: #FFFFFF;
-  --ring: var(--ai-strong);
-  color-scheme: light;
-}
-
-/* Re-assert dark when next-themes has set the class — needs to override
-   the html:not(.dark) light rule above. Specificity (0,1,0) is not enough
-   on its own; we use html.dark (0,2,0) so it ties source-order-wise but
-   wins because it's after, and definitively beats html.light. */
-html.dark {
+/* HiveDeploy docs tokens: the marketing site's Honey system (www app/globals.css :root) plus the
+   status tints, code surface and syntax hues from the proof-docs-v2 looks. Dark only, one look.
+   warn is orange and always carries a triangle; Honey is the accent and never marks a warning.
+   --text-faint never appears in article body text. */
+:root {
+  --bg: #08080A;
+  --band: #0E0E11;
+  --raised: #131316;
+  --glass: rgba(255,255,255,0.04);
+  --glass-hover: rgba(255,255,255,0.065);
+  --line: rgba(255,255,255,0.08);
+  --line-strong: rgba(255,255,255,0.16);
+  --line-hover: rgba(255,255,255,0.14);
+  --text-strong: #F5F5F2;
+  --text: #D6D6D2;
+  --text-muted: #9A9A96;
+  --text-faint: #82827F;
+  --ok: #34D399;
+  --warn: #FF8A3D;
+  --fail: #FB7185;
+  --ok-soft: rgba(52,211,153,0.12);
+  --ok-edge: rgba(52,211,153,0.45);
+  --warn-soft: rgba(255,138,61,0.12);
+  --warn-edge: rgba(255,138,61,0.5);
+  --fail-soft: rgba(251,113,133,0.12);
+  --fail-edge: rgba(251,113,133,0.5);
+  --note: #FFFFFF;
+  --note-ink: #08080A;
+  --shadow: 0 24px 80px -24px rgba(0,0,0,.85);
+  --shadow-soft: 0 8px 32px -12px rgba(0,0,0,.6);
+  --accent: #F5B301;
+  --accent-hover: #FFC53D;
+  --on-accent: #1A1200;
+  --accent-text: #F7C244;
+  --accent-soft: rgba(245,179,1,0.14);
+  --accent-edge: rgba(245,179,1,0.5);
+  --glow: rgba(245,179,1,0.32);
+  --grad-a: #FFD36A;
+  --grad-b: #F5B301;
+  --grad-c: #FF8A3D;
+  --cell: 245,179,1;
+  --code-bg: #0B0B0E;
+  --syn-cmt: #82827F;
+  --syn-str: #E3CFA6;
+  --syn-kw: #9FC3E6;
+  --syn-key: #C9B8EC;
+  --syn-num: #E8B98C;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; background: var(--bg); color-scheme: dark; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+code, pre, kbd, samp, .nextra-code { font-family: var(--font-mono); }
+button { font: inherit; color: inherit; }
+input { font: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* type */
+.kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-text); }
+.label { font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+.mono { font-family: var(--font-mono); }
+.tnum { font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* controls */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 500; font-size: 14px; line-height: 1; border: 1px solid transparent; cursor: pointer; white-space: nowrap; text-decoration: none; transition: background .15s, border-color .15s, color .15s, box-shadow .15s; }
+.btn.accent { background: var(--accent); color: var(--on-accent); }
+.btn.accent:hover { background: var(--accent-hover); box-shadow: 0 8px 32px -8px var(--glow); }
+.btn.glass { background: var(--glass); border-color: var(--line-strong); color: var(--text-strong); }
+.btn.glass:hover { background: var(--glass-hover); border-color: var(--line-hover); }
+.btn.ghost { color: var(--text-muted); }
+.btn.ghost:hover { color: var(--text-strong); }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--line-strong); color: var(--text-muted); background: var(--glass); }
+.kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--line-strong); background: var(--glass); font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.tri { width: 13px; height: 13px; flex: 0 0 13px; }
+.tri path { fill: none; stroke: var(--warn); stroke-width: 1.6; stroke-linejoin: round; }
+.tri .bang { stroke-linecap: round; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important }
 }

@@ -65,22 +65,12 @@ curl -I https://docs.hivedeploy.in
 
 Visit `https://docs.hivedeploy.in` in a browser. Walk through the post-launch smoke checklist below.
 
-## Step 7 — Configure GitHub Actions secrets
-
-In `github.com/khandelwal-harsh/hivedeploy-docs` → Settings → Secrets and variables → Actions:
-
-| Secret | Value | Used by |
-|---|---|---|
-| `FRONTEND_REPO_READ_TOKEN` | Fine-grained PAT with read access to `khandelwal-harsh/frontend-ai-orchestrator` | `css-drift-check.yml` |
-
-If the frontend repo is public, this secret is **not** needed — the default `GITHUB_TOKEN` works.
-
 ## Smoke checklist
 
 After the live deploy succeeds:
 
 - [ ] `docs.hivedeploy.in` returns 200
-- [ ] All ported pages render in both dark and light mode (toggle via topbar)
+- [ ] All pages render in the dark theme
 - [ ] ⌘K opens search; "GCP", "Postgres", "billing", "WIF", "403" each return at least one result
 - [ ] `/reference/api-reference` loads Scalar with the snapshotted spec
 - [ ] Click 👍 on a page → check Slack `#docs-feedback` for the message
