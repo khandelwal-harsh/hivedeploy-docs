@@ -36,6 +36,28 @@ test('keyboard only: open, find, move, go, and focus comes back on Esc', async (
   await expect(dlg).toBeHidden()
 })
 
+test('Esc then ⌘K at once: the late close event of the first palette does not shut the second', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 768)
+  await page.goto('/quickstart')
+  await page.waitForLoadState('networkidle')
+  const dlg = page.getByTestId('search-palette')
+  const box = dlg.getByRole('combobox')
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('ControlOrMeta+k')
+    await expect(box).toBeFocused()
+    await page.keyboard.type('gate')
+    // no wait between closing and reopening: the dialog's `close` event is still queued
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('ControlOrMeta+k')
+    await page.keyboard.type('external ID')
+    await expect(box, `round ${i}`).toHaveValue('external ID')
+    await expect(dlg, `round ${i}`).toBeVisible()
+    await expect(box, `round ${i}`).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dlg).toBeHidden()
+  }
+})
+
 test('"/" opens it, but not while typing in a field', async ({ page }) => {
   await page.goto('/connect-clouds/aws')
   await page.waitForLoadState('networkidle') // the shortcut is a React effect; wait for hydration

@@ -37,6 +37,14 @@ export function SearchPalette() {
   const [active, setActive] = useState(0)
   const resultsId = 'search-results'
 
+  // The query empties in the render that closes the palette, so the next open starts empty before anyone types. A
+  // setQuery('') in the effect below would be a low-priority update that a quick ⌘K and the first keys can overtake.
+  const [shown, setShown] = useState(open)
+  if (shown !== open) {
+    setShown(open)
+    if (!open) setQuery('')
+  }
+
   // One capture-phase listener: ⌘K / Ctrl+K toggles (and stops Scalar's own handler), "/" opens outside a field.
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -61,9 +69,8 @@ export function SearchPalette() {
       opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
       d.showModal()
       input.current?.focus()
-    } else if (!open) {
-      if (d.open) d.close()
-      setQuery('') // cleared on close, so the next open starts empty before anyone types
+    } else if (!open && d.open) {
+      d.close()
     }
   }, [open])
 
@@ -130,6 +137,9 @@ export function SearchPalette() {
       className="dx-scrim dx-modal"
       aria-label="Search documentation"
       onClose={() => {
+        // `close` is delivered as a task after dialog.close(). If ⌘K reopened the palette before it arrived, the event
+        // belongs to the palette that already closed: shutting this one would drop keystrokes and move focus away.
+        if (dialog.current?.open) return
         closeSearch()
         opener.current?.focus()
         opener.current = null
