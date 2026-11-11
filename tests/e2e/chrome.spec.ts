@@ -9,8 +9,25 @@ test('header: 56 px, solid, every link where it should go', async ({ page }) => 
   for (const [name, href] of [['HiveDeploy', 'https://www.hivedeploy.in'], ['Docs', '/'], ['API reference', '/reference/api-reference'], ['Changelog', '/changelog'],
     ['Proof', 'https://proof.hivedeploy.in'], ['Sign in', 'https://app.hivedeploy.in/login'], ['Get started', 'https://www.hivedeploy.in/#waitlist']] as const)
     await expect(h.getByRole('link', { name, exact: name === 'Docs' }).first()).toHaveAttribute('href', href)
-  await expect(h.getByRole('link', { name: 'Documentation' })).toHaveAttribute('aria-current', 'page')
+  // the Documentation tab marks the section this page is in, not this page (its href is the home)
+  await expect(h.getByRole('link', { name: 'Documentation' })).toHaveAttribute('aria-current', 'true')
   await expect(h.getByRole('link', { name: /github/i })).toHaveCount(0)
+})
+
+test('a header tab says "page" only on its own page, "true" for the section around it, nothing elsewhere', async ({ page }) => {
+  const want: [string, Record<string, string | null>][] = [
+    ['/', { Documentation: 'page', 'API reference': null, Changelog: null }],
+    ['/quickstart', { Documentation: 'true', 'API reference': null, Changelog: null }],
+    ['/reference/env-vars', { Documentation: 'true', 'API reference': null, Changelog: null }],
+    ['/reference/api-reference', { Documentation: null, 'API reference': 'page', Changelog: null }],
+    ['/changelog', { Documentation: null, 'API reference': null, Changelog: 'page' }],
+  ]
+  for (const [path, tabs] of want) {
+    await page.goto(path)
+    // the tabs are in the DOM at every width (the phone header hides them), so read the attribute, not the role
+    const got = await page.locator('.dx-tabs a').evaluateAll((as) => Object.fromEntries(as.map((a) => [a.textContent!.trim(), a.getAttribute('aria-current')])))
+    expect(got, path).toEqual(tabs)
+  }
 })
 
 test('the skip link is the first focusable element, and Enter moves into the content', async ({ page }) => {

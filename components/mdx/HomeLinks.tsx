@@ -1,5 +1,6 @@
 import { Children, cloneElement, isValidElement } from 'react'
 import type { PointerEvent, ReactElement, ReactNode } from 'react'
+import Link from 'next/link'
 import { BRAND_MARKS } from '../home/brandMarks'
 
 type El = ReactElement<{ children?: ReactNode; href?: string }>
@@ -117,12 +118,13 @@ export function HomeLinks({ data }: { data: Parsed }) {
       </p>
       <div className="dx-hgrid dx-hrows">
         {data.rows.map((r) => (
-          <a key={r.href} className="dx-hcard dx-hrow" href={r.href} onPointerMove={follow}>
+          // next/link, as Nextra's own links are: the busiest path, home to a doc, moves without a full page load
+          <Link key={r.href} className="dx-hcard dx-hrow" href={r.href} onPointerMove={follow}>
             <Icon href={r.href} />
             <span className="t">{r.title}</span>
             <span className="d">{r.desc}</span>
             <span className="go" aria-hidden="true">→</span>
-          </a>
+          </Link>
         ))}
       </div>
     </div>

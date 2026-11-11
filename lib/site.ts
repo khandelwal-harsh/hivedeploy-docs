@@ -14,11 +14,20 @@ export const TABS: { label: TabLabel; href: string }[] = [
   { label: 'Changelog', href: '/changelog' },
 ]
 
+const clean = (pathname: string) => pathname.split(/[?#]/)[0]!.replace(/\/+$/, '') || '/'
+
 export function activeTab(pathname: string): TabLabel {
-  const p = pathname.split(/[?#]/)[0]!.replace(/\/+$/, '') || '/'
+  const p = clean(pathname)
   if (p === '/changelog' || p.startsWith('/changelog/')) return 'Changelog'
   if (p === '/reference/api-reference') return 'API reference'
   return 'Documentation'
+}
+
+/** aria-current for a header tab: "page" on the tab's own page, "true" on another page of its section (the
+ *  Documentation tab links the home but stands for every doc page), and none for the other tabs. */
+export function tabCurrent(tab: { label: TabLabel; href: string }, pathname: string): 'page' | 'true' | undefined {
+  if (activeTab(pathname) !== tab.label) return undefined
+  return clean(pathname) === tab.href ? 'page' : 'true'
 }
 
 export interface FooterCol {

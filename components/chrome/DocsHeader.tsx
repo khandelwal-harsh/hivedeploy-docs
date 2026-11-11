@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { SkipNavLink, useMenu } from 'nextra-theme-docs'
-import { GET_STARTED, PROOF, SIGN_IN, TABS, WWW, activeTab } from '../../lib/site'
+import { GET_STARTED, PROOF, SIGN_IN, TABS, WWW, activeTab, tabCurrent } from '../../lib/site'
 import { SearchTrigger } from './SearchTrigger'
 import { SwarmMark } from './SwarmMark'
 
@@ -123,7 +123,7 @@ export function DocsHeader(_props: { items?: unknown }) {
         <nav ref={tabs} className="dx-tabs" aria-label="Docs sections">
           <span className="glowspot" aria-hidden="true" />
           {TABS.map((t) => (
-            <Link key={t.label} href={t.href} className={t.label === active ? 'on' : undefined} aria-current={t.label === active ? 'page' : undefined}>
+            <Link key={t.label} href={t.href} className={t.label === active ? 'on' : undefined} aria-current={tabCurrent(t, path)}>
               {t.label}
             </Link>
           ))}

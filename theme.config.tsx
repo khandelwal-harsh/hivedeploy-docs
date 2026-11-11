@@ -54,50 +54,74 @@ function Head() {
  */
 function Main({ children }: { children: ReactNode }) {
   const { pathname, asPath } = useRouter()
-  // Nextra marks the open page with an `active` class only; assistive tech and the pill style want aria-current.
-  // Its previous / next cards show only a title; assistive tech also hears which way each goes, and the name
-  // starts with "Previous" or "Next" and keeps the visible title (WCAG 2.5.3). The next card is the one Nextra pushes right.
+  // Nextra renders its own <main> only in the default layout; a full-layout page is a bare <article>.
+  const full = useConfig().normalizePagesResult.activeThemeContext.layout === 'full'
+  // Nextra marks the open page with an `active` class only; assistive tech and the pill style want aria-current. It
+  // mounts the phone drawer's copy of the list after this effect first runs, and re-renders lists as folders open, so
+  // the mark is re-applied whenever the sidebar's links change (at most once a frame).
   useEffect(() => {
     const side = document.querySelector('.nextra-sidebar-container')
-    side?.querySelectorAll('a[aria-current="page"]').forEach((a) => a.removeAttribute('aria-current'))
-    side?.querySelectorAll('li.active > a').forEach((a) => a.setAttribute('aria-current', 'page'))
+    if (!side) return
+    const mark = () => {
+      side.querySelectorAll('a[aria-current="page"]').forEach((a) => {
+        if (!a.matches('li.active > a')) a.removeAttribute('aria-current')
+      })
+      side.querySelectorAll('li.active > a:not([aria-current="page"])').forEach((a) => a.setAttribute('aria-current', 'page'))
+    }
+    mark()
+    let frame = 0
+    const observer = new MutationObserver(() => {
+      if (!frame)
+        frame = requestAnimationFrame(() => {
+          frame = 0
+          mark()
+        })
+    })
+    observer.observe(side, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+    return () => {
+      observer.disconnect()
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [asPath])
+  // Nextra's previous / next cards show only a title; assistive tech also hears which way each goes, and the name
+  // starts with "Previous" or "Next" and keeps the visible title (WCAG 2.5.3). The next card is the one Nextra pushes right.
+  useEffect(() => {
     document.querySelectorAll('.dx-pn a').forEach((a) => {
       a.setAttribute('aria-label', `${a.matches('[class~="ltr:_ml-auto"]') ? 'Next' : 'Previous'}: ${(a.textContent ?? '').trim()}`)
     })
   }, [asPath])
+  // A full-layout page gets its main landmark one level below the article, so the default layout's `article > main`
+  // rules (the 720 measure, its padding, the gutter) never reach it.
   if (pathname === '/') {
     return (
       <div className="dx-home">
-        <HomeHero />
-        <div className="dx-homebody">{children}</div>
+        <main>
+          <HomeHero />
+          <div className="dx-homebody">{children}</div>
+        </main>
       </div>
     )
   }
   const parts = isValidElement<{ children?: ReactNode }>(children) ? children.props.children : undefined
   const raw = Array.isArray(parts) && parts.length === 5 ? (parts as ReactNode[]) : null
-  if (!raw) {
-    return (
-      <div className="dx-body">
-        <PageHead />
-        <MobileToc />
-        {children}
-        <div className="dx-pagefoot">
-          <FeedbackWidget />
-        </div>
-      </div>
-    )
-  }
-  const pagination = raw[4]
-  return (
+  const pagination = raw?.[4]
+  const body = (
     <div className="dx-body">
       <PageHead />
       <MobileToc />
-      {Children.toArray(raw.slice(0, 4))}
+      {raw ? Children.toArray(raw.slice(0, 4)) : children}
       <div className="dx-pagefoot">
         <FeedbackWidget />
         {pagination ? <div className="dx-pn">{pagination}</div> : null}
       </div>
     </div>
+  )
+  return full ? (
+    <div className="dx-full">
+      <main>{body}</main>
+    </div>
+  ) : (
+    body
   )
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FOOTER, GET_STARTED, SIGN_IN, TABS, activeTab } from '../lib/site'
+import { FOOTER, GET_STARTED, SIGN_IN, TABS, activeTab, tabCurrent } from '../lib/site'
 
 describe('activeTab', () => {
   it('maps paths to tabs', () => {
@@ -8,6 +8,18 @@ describe('activeTab', () => {
     expect(activeTab('/reference/api-reference')).toBe('API reference')
     expect(activeTab('/reference/api')).toBe('Documentation')
     expect(activeTab('/changelog')).toBe('Changelog')
+  })
+})
+
+describe('tabCurrent', () => {
+  const at = (path: string) => Object.fromEntries(TABS.map((t) => [t.label, tabCurrent(t, path)]))
+  it('is "page" on the tab\'s own page, "true" for the section around it, and nothing elsewhere', () => {
+    expect(at('/')).toEqual({ Documentation: 'page', 'API reference': undefined, Changelog: undefined })
+    expect(at('/guides/billing')).toEqual({ Documentation: 'true', 'API reference': undefined, Changelog: undefined })
+    expect(at('/reference/api-reference')).toEqual({ Documentation: undefined, 'API reference': 'page', Changelog: undefined })
+    expect(at('/reference/api-reference/')).toEqual({ Documentation: undefined, 'API reference': 'page', Changelog: undefined })
+    expect(at('/changelog')).toEqual({ Documentation: undefined, 'API reference': undefined, Changelog: 'page' })
+    expect(at('/changelog/2026')).toEqual({ Documentation: undefined, 'API reference': undefined, Changelog: 'true' })
   })
 })
 

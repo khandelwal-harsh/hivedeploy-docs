@@ -117,6 +117,44 @@ test('one h1 and headings in order on every page', async ({ page }) => {
   }).toPass()
 })
 
+test('every page has one main landmark holding its h1 and its content; on the full-layout pages it sits below the article', async ({ page }) => {
+  for (const { path } of PAGES) {
+    await page.goto(path)
+    if (path === API) await page.locator('.scalar-app').first().waitFor()
+    const main = page.getByRole('main')
+    await expect(main, path).toHaveCount(1)
+    await expect(main.locator('h1').first(), path).toBeVisible()
+    const r = await page.evaluate(() => {
+      const m = document.querySelector('main')!
+      const a = document.querySelector('article.nextra-content')!
+      return {
+        inArticle: a.contains(m),
+        content: !!m.querySelector(':scope .dx-homebody, :scope .dx-body'),
+        scalar: !!m.querySelector('.scalar-app'),
+        // D10 / D13: the default-layout rules (`article > main`: the 720 clamp, padding, gutter) must not reach it
+        child: m.parentElement === a,
+      }
+    })
+    expect(r.inArticle, path).toBe(true)
+    expect(r.content, path).toBe(true)
+    if (path === API) expect(r.scalar, path).toBe(true)
+    if (path === '/' || path === API) expect(r.child, path).toBe(false)
+  }
+})
+
+test('on the home and the API reference the skip link still lands in the content, inside main', async ({ page }) => {
+  for (const path of ['/', API]) {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused()
+    await page.keyboard.press('Enter')
+    expect(await page.evaluate(() => location.hash), path).toBe('#reach-skip-nav')
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate(() => !!document.activeElement?.closest('main')), path).toBe(true)
+  }
+})
+
 test('reduced motion: no transition runs', async ({ browser }) => {
   once()
   const ctx = await browser.newContext({ reducedMotion: 'reduce' })

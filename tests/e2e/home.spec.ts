@@ -22,7 +22,8 @@ test('full layout: no sidebar, no contents rail, no feedback widget; header spot
   await expect(page.getByText('Was this page helpful?')).toHaveCount(0)
   await expect(page.getByTestId('docs-header')).toHaveClass(/spotlight/)
   await expect(page.locator('.dx-homebody table')).toHaveCount(0)
-  // D10 / D13: no <main>, and the 720 px article measure does not clamp the home.
+  // D10 / D13: the home's <main> sits inside .dx-home, never directly under the article, so the 720 px article
+  // measure (`article > main`) does not clamp the home.
   await expect(page.locator('article.nextra-content > main')).toHaveCount(0)
 })
 
@@ -45,6 +46,19 @@ test("22 link cards with the page's own hrefs; Reference and Explanation side by
   expect(b!.x).toBeGreaterThan(a!.x + 200)
   const row = await page.locator('.dx-hsec').first().locator('a.dx-hcard').evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().top)))
   expect(new Set(row).size).toBe(1)
+})
+
+test('a card opens its page in place (client-side), as the base did, keeping its href and name', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+  // a full page load would drop this
+  await page.evaluate(() => ((window as unknown as { stay?: number }).stay = 1))
+  const card = page.getByRole('link', { name: /^Quickstart First 10 minutes/ })
+  await expect(card).toHaveAttribute('href', '/quickstart')
+  await card.click()
+  await expect(page).toHaveURL(/\/quickstart$/)
+  await expect(page.locator('h1')).toHaveText('Quickstart')
+  expect(await page.evaluate(() => (window as unknown as { stay?: number }).stay)).toBe(1)
 })
 
 test('the hero search opens the palette', async ({ page }) => {
