@@ -1,14 +1,24 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { inOrder, mdxWords, toks } from '../lib/words'
 
-// pages/changelog/index.mdx has 16 `## YYYY-MM-DD — ` headings (three of them date ranges). The RSS script skips the ranges (owner call), so the feed has 13.
-const ENTRIES = 16
-const RSS_ITEMS = 13
+// Counted from the MDX, as D2 counts code fences, so the next entry does not break the suite. An entry is a
+// `## YYYY-MM-DD — ` or `## YYYY-MM-DD → MM-DD — ` heading (lib/rehype-docs.mjs ENTRY). The RSS script keeps only the
+// headings without a range (scripts/generate-changelog-rss.ts: `^(\d{4}-\d{2}-\d{2})\s*—`), so the feed has fewer items
+// than the page has entries (D5, an owner call): 13 of 16 when this was written.
+const MDX = readFileSync('pages/changelog/index.mdx', 'utf8')
+const HEADINGS = [...MDX.matchAll(/^## (\d{4}-\d{2}-\d{2}(?: → \S+)?) — (.+)$/gm)]
+const ENTRIES = HEADINGS.length
+const RSS_ITEMS = HEADINGS.filter((h) => !h[1]!.includes('→')).length
+const FIRST_DATE = HEADINGS[0]![1]!
+// the newest entry's first kind label: its first line that is only bold text (**Added**)
+const FIRST_KIND = /^\*\*([^*]+)\*\*$/m.exec(MDX.slice(HEADINGS[0]!.index))![1]!
 
-test('sixteen dated entries, newest lit, every word kept, RSS link intact', async ({ page, request }) => {
+test('every dated entry, newest lit, every word kept, RSS link intact', async ({ page, request }) => {
+  expect(ENTRIES, 'the MDX has its dated headings').toBeGreaterThanOrEqual(16)
   await page.goto('/changelog')
   await expect(page.locator('article.dx-cl-entry')).toHaveCount(ENTRIES)
-  await expect(page.locator('article.dx-cl-entry.first .dx-cl-date')).toHaveText('2026-07-18')
+  await expect(page.locator('article.dx-cl-entry.first .dx-cl-date')).toHaveText(FIRST_DATE)
   await expect(page.locator('article.dx-cl-entry.first')).toHaveCount(1)
   expect(inOrder(mdxWords('pages/changelog/index.mdx'), toks(await page.locator('article.nextra-content').innerText()))).toEqual({ ok: true })
   await expect(page.getByRole('link', { name: /RSS/i })).toHaveAttribute('href', '/changelog.xml')
@@ -19,7 +29,9 @@ test('sixteen dated entries, newest lit, every word kept, RSS link intact', asyn
 
 test('the heading keeps its id and whole text for assistive tech; the visual date is hidden from it', async ({ page }) => {
   await page.goto('/changelog')
-  const first = page.locator('article.dx-cl-entry.first')
+  // this entry, wherever later entries put it
+  const first = page.locator('article.dx-cl-entry', { has: page.locator('.dx-cl-date', { hasText: /^2026-07-18$/ }) })
+  await expect(first).toHaveCount(1)
   await expect(first.locator('.dx-cl-date')).toHaveAttribute('aria-hidden', 'true')
   const h2 = first.locator('h2')
   await expect(h2).toHaveAttribute('id', '2026-07-18--public-reliability-ledger')
@@ -38,7 +50,7 @@ test('the heading keeps its id and whole text for assistive tech; the visual dat
 test('kind labels and a range heading', async ({ page }) => {
   await page.goto('/changelog')
   expect(await page.locator('p.dx-kind').count()).toBeGreaterThan(10)
-  await expect(page.locator('p.dx-kind').first()).toHaveText('Added')
+  await expect(page.locator('p.dx-kind').first()).toHaveText(FIRST_KIND)
   await expect(page.locator('article.dx-cl-entry .dx-cl-date', { hasText: '2026-07-02 → 07-12' })).toHaveCount(1)
   await expect(page.locator('article.nextra-content hr')).toHaveCount(0)
 })

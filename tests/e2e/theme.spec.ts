@@ -26,7 +26,8 @@ test('a remembered light theme and a light system still get the dark page', asyn
   await ctx.close()
 })
 
-test('Geist is self-hosted; the CSP names no font host; nothing is blocked', async ({ page }) => {
+test('Geist is self-hosted; the CSP names no font host; nothing is blocked', async ({ page, baseURL }) => {
+  const self = new URL(baseURL!).host
   const hosts = new Set<string>()
   const blocked: string[] = []
   page.on('request', (r) => hosts.add(new URL(r.url()).host))
@@ -35,7 +36,7 @@ test('Geist is self-hosted; the CSP names no font host; nothing is blocked', asy
   })
   const res = await page.goto('/quickstart')
   await page.evaluate(() => document.fonts.ready)
-  expect([...hosts].filter((h) => h !== '127.0.0.1:3320')).toEqual([])
+  expect([...hosts].filter((h) => h !== self)).toEqual([])
   expect(blocked).toEqual([])
   const csp = res!.headers()['content-security-policy']
   expect(csp).toContain("font-src 'self'")
