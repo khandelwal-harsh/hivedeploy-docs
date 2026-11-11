@@ -18,8 +18,18 @@ function Mark({ type }: { type: CalloutType }) {
         <path className="bang" d="M8 6.2v3.6M8 11.6v.4" />
       </svg>
     )
-  if (type === 'error') return <i className="glyph" aria-hidden="true">✕</i>
-  if (type === 'success') return <i className="glyph" aria-hidden="true">✓</i>
+  if (type === 'error')
+    return (
+      <svg className="glyph x" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M4 4l8 8M12 4l-8 8" />
+      </svg>
+    )
+  if (type === 'success')
+    return (
+      <svg className="glyph ok" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M3 8.5l3.2 3.2L13 4.8" />
+      </svg>
+    )
   return <i className="dot" aria-hidden="true" />
 }
 

@@ -97,3 +97,29 @@ test('the focus ring on a code block is not clipped by the block', async ({ page
   // the ring's outer edge must sit inside the block's own box, which clips with overflow: hidden
   for (const side of [r.top, r.left, r.right, r.bottom]) expect(side).toBeGreaterThanOrEqual(-0.5)
 })
+
+// Review fix 1: the step square hangs outside the column only where the page has room for it.
+for (const width of [768, 1024, 1280, 1339, 1340])
+  test(`steps at ${width}: the square stays clear of the sidebar and on screen`, async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width, height: 900 } })
+    const page = await ctx.newPage()
+    await page.goto('/quickstart')
+    const side = await page.locator('.nextra-sidebar-container').evaluate((e) => {
+      const r = e.getBoundingClientRect()
+      return getComputedStyle(e).visibility !== 'hidden' && r.width > 0 && r.right > 0 ? r.right : 0
+    })
+    const lefts = await page.locator('.dx-step').evaluateAll((s) => s.map((e) => e.getBoundingClientRect().left))
+    expect(lefts).toHaveLength(6)
+    for (const l of lefts) {
+      expect(l).toBeGreaterThanOrEqual(side)
+      expect(l).toBeGreaterThanOrEqual(0)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+    await ctx.close()
+  })
+
+test('the step number is decoration: its content carries an empty alt', async ({ page }) => {
+  await page.goto('/quickstart')
+  const c = await page.locator('.dx-step').first().evaluate((e) => getComputedStyle(e, '::before').content)
+  expect(c).toMatch(/"01"/)
+})
