@@ -20,6 +20,9 @@ importers:
       '@vercel/og':
         specifier: 0.6.3
         version: 0.6.3
+      flexsearch:
+        specifier: 0.7.43
+        version: 0.7.43
       geist:
         specifier: 1.9.2
         version: 1.9.2(next@14.2.5(@playwright/test@1.65.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))

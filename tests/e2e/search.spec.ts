@@ -1,0 +1,97 @@
+import { expect, test } from '@playwright/test'
+
+// Review Focus 1
+test('keyboard only: open, find, move, go, and focus comes back on Esc', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 768)
+  await page.goto('/quickstart')
+  await page.waitForLoadState('networkidle') // the shortcuts are React effects; wait for hydration
+  const trigger = page.getByTestId('docs-header').getByTestId('search-trigger')
+  await trigger.focus()
+  await page.keyboard.press('ControlOrMeta+k')
+  const dlg = page.getByTestId('search-palette')
+  await expect(dlg).toBeVisible()
+  await expect(dlg.getByRole('combobox')).toBeFocused()
+  await page.keyboard.type('external ID')
+  await expect(dlg.getByRole('combobox')).toHaveValue('external ID')
+  await expect(dlg.getByRole('option').first()).toBeVisible()
+  await expect(dlg.locator('[aria-live]')).toHaveText(/^\d+ results$/)
+  await expect(dlg.getByText('Connect a cloud', { exact: true })).toBeVisible()
+  await expect(dlg.locator('mark').first()).toHaveText(/external|id/i)
+  const first = await dlg.getByRole('combobox').getAttribute('aria-activedescendant')
+  await page.keyboard.press('ArrowDown')
+  expect(await dlg.getByRole('combobox').getAttribute('aria-activedescendant')).not.toBe(first)
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[data-testid="search-palette"]'))).toBe(true)
+  }
+  await page.keyboard.press('Escape')
+  await expect(dlg).toBeHidden()
+  await expect(trigger).toBeFocused()
+  await page.keyboard.press('ControlOrMeta+k')
+  await page.keyboard.type('external ID')
+  await expect(dlg.getByRole('combobox')).toHaveValue('external ID')
+  await expect(dlg.getByRole('option').first()).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/(connect-clouds|troubleshooting|changelog)/)
+  await expect(dlg).toBeHidden()
+})
+
+test('"/" opens it, but not while typing in a field', async ({ page }) => {
+  await page.goto('/connect-clouds/aws')
+  await page.waitForLoadState('networkidle') // the shortcut is a React effect; wait for hydration
+  await page.keyboard.press('/')
+  await expect(page.getByTestId('search-palette')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: /^No/ }).click()
+  await page.locator('textarea').focus()
+  await page.keyboard.press('/')
+  await expect(page.getByTestId('search-palette')).toBeHidden()
+})
+
+test('on the API reference exactly one search opens, and it is ours, not Scalar\'s', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 768)
+  await page.goto('/reference/api-reference')
+  await page.waitForLoadState('networkidle')
+  // Scalar's search is a headless-ui dialog in `.scalar-modal-search` holding `.ref-search-container`; make sure it exists to be caught.
+  await page.keyboard.press('ControlOrMeta+k')
+  await expect(page.getByTestId('search-palette')).toBeVisible()
+  expect(await page.locator('dialog[open], [role="dialog"]:visible').count()).toBe(1)
+  await expect(page.locator('.scalar-modal-search, .ref-search-container, [aria-label="Reference Search"]').locator('visible=true')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('search-palette')).toBeHidden()
+  // Control: Scalar's own trigger still opens Scalar's search, so the absence above is meaningful.
+  await page.locator('button.sidebar-search').first().click()
+  await expect(page.locator('.ref-search-container')).toBeVisible()
+})
+
+test('no results, and an index that cannot load, both say so and still close', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 768)
+  await page.goto('/quickstart')
+  await page.waitForLoadState('networkidle')
+  await page.keyboard.press('ControlOrMeta+k')
+  await page.keyboard.type('zzqqxxyy')
+  await expect(page.getByTestId('search-palette').locator('[aria-live]')).toHaveText('No results.')
+  await page.keyboard.press('Escape')
+  await page.route('**/nextra-data-*.json', (r) => r.abort())
+  await page.reload()
+  await page.waitForLoadState('networkidle')
+  await page.keyboard.press('ControlOrMeta+k')
+  await expect(page.getByTestId('search-palette')).toContainText('Search is unavailable. Reload the page.')
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('search-palette')).toBeHidden()
+})
+
+test('phone: the header icon opens it full width', async ({ page }) => {
+  test.skip(page.viewportSize()!.width >= 768)
+  await page.goto('/quickstart')
+  await page.getByTestId('docs-header').getByTestId('search-trigger').click()
+  const b = await page.getByTestId('search-palette').boundingBox()
+  expect(b!.width).toBeLessThanOrEqual(390)
+  expect(b!.width).toBeGreaterThan(340)
+})
+
+test('the index Nextra builds is where the palette reads it', async ({ request }) => {
+  const r = await request.get('/_next/static/chunks/nextra-data-en-US.json')
+  expect(r.status()).toBe(200)
+  expect(Object.keys(await r.json())).toContain('/quickstart')
+})

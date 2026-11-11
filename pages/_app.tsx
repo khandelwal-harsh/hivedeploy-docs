@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/react'
+import { SearchPalette } from '../components/search/SearchPalette'
 import '../styles/globals.css'
 import '../styles/nextra-overrides.css'
 import '../styles/components.css'
@@ -18,6 +19,7 @@ export default function App({ Component, pageProps }: AppProps) {
       `}</style>
       <div className={`${GeistSans.variable} ${GeistMono.variable}`}>
         <Component {...pageProps} />
+        <SearchPalette />
       </div>
       <Analytics />
     </>
