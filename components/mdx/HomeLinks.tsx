@@ -52,6 +52,8 @@ export function parseLinkTable(children: ReactNode): Parsed | null {
     if (tds.length !== 2) return null
     const link = findLink(tds[0])
     if (!link || !link.props.href) return null
+    // Words outside the link ("**[A](/a)** (beta)") would be lost in a card, so such a table stays a table.
+    if (text(tds[0]).trim() !== text(link).trim()) return null
     rows.push({ href: link.props.href, title: text(link), desc: Children.map(asEl(tds[1])?.props.children, unlink) })
   }
   if (rows.length === 0) return null

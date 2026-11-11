@@ -300,11 +300,12 @@ article.nextra-content > .dx-home { width: 100%; min-width: 0; }
 .dx-homebody > .dx-hsec:nth-of-type(1) { grid-row: 2; }
 .dx-homebody > h2:nth-of-type(2) { grid-row: 3; }
 .dx-homebody > .dx-hsec:nth-of-type(2) { grid-row: 4; }
-.dx-homebody > h2:nth-of-type(3), .dx-homebody > h2:nth-of-type(4) { grid-row: 5; padding-bottom: 38px; }
+/* Reference and Explanation share a row for their h2s (bottom-aligned, so a wrapping title only grows the row) and a row for their labels; the rule sits under the label. */
+.dx-homebody > h2:nth-of-type(3), .dx-homebody > h2:nth-of-type(4) { grid-row: 5; align-self: end; margin-bottom: 0; padding-bottom: 8px; border-bottom: 0; }
 .dx-homebody > h2:nth-of-type(3), .dx-homebody > .dx-hsec:nth-of-type(3) { grid-column: 1 / 7; }
 .dx-homebody > h2:nth-of-type(4), .dx-homebody > .dx-hsec:nth-of-type(4) { grid-column: 7 / -1; }
 .dx-homebody > .dx-hsec:nth-of-type(3), .dx-homebody > .dx-hsec:nth-of-type(4) { grid-row: 6; }
-.dx-homebody > .dx-hsec:nth-of-type(3) .cols, .dx-homebody > .dx-hsec:nth-of-type(4) .cols { right: auto; left: 0; top: -51px; line-height: 16px; }
+.dx-homebody > .dx-hsec:nth-of-type(3) .cols, .dx-homebody > .dx-hsec:nth-of-type(4) .cols { position: static; display: block; margin: 0 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); line-height: 16px; }
 .dx-homebody > h2:nth-of-type(5) { grid-row: 7; }
 .dx-homebody > .dx-hsec:nth-of-type(5) { grid-row: 8; }
 
@@ -363,10 +364,10 @@ article.nextra-content > .dx-home { width: 100%; min-width: 0; }
   .dx-hero .dx-search { margin-top: 26px; }
   .dx-homebody { display: block; padding: 0 16px; }
   .dx-homebody > h2 { margin-top: 48px; }
-  .dx-homebody > h2:nth-of-type(3), .dx-homebody > h2:nth-of-type(4) { padding-bottom: 14px; }
-  .dx-hsec .cols, .dx-homebody > .dx-hsec:nth-of-type(3) .cols, .dx-homebody > .dx-hsec:nth-of-type(4) .cols { position: static; margin: 0 0 14px; line-height: 16px; white-space: normal; }
+  .dx-homebody > h2:nth-of-type(3), .dx-homebody > h2:nth-of-type(4) { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .dx-hsec .cols, .dx-homebody > .dx-hsec:nth-of-type(3) .cols, .dx-homebody > .dx-hsec:nth-of-type(4) .cols { position: static; margin: 0 0 14px; padding: 0; border: 0; line-height: 16px; white-space: normal; }
   .dx-hsec:nth-of-type(-n+2) > .dx-hgrid { grid-template-columns: minmax(0, 1fr); }
-  .dx-hsec:nth-of-type(n+3) .dx-hcard, .dx-hsec:nth-of-type(n+3) .dx-hcard { grid-template-columns: 30px minmax(0, 1fr) 20px; row-gap: 2px; }
+  .dx-hsec:nth-of-type(n+3) .dx-hcard { grid-template-columns: 30px minmax(0, 1fr) 20px; row-gap: 2px; }
   .dx-hsec:nth-of-type(n+3) .dx-hcard .ic { grid-column: 1; grid-row: 1 / span 2; align-self: start; }
   .dx-hsec:nth-of-type(n+3) .dx-hcard .t { grid-column: 2; grid-row: 1; }
   .dx-hsec:nth-of-type(n+3) .dx-hcard .d { grid-column: 2; grid-row: 2; }

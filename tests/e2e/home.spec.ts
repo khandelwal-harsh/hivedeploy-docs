@@ -78,10 +78,56 @@ test('cards are real links with a visible focus ring; the accent edge follows th
   expect(await card.evaluate((e) => e.style.getPropertyValue('--gx'))).toBe('60px')
 })
 
-test('D12: reduced motion leaves the cards still; nothing on the home loops', async ({ browser }) => {
-  const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1440, height: 900 } })
+test('the page keeps the section order its layout is written for', async ({ page }) => {
+  await page.goto('/')
+  const h2 = await page.locator('.dx-homebody > h2').allInnerTexts()
+  expect(h2.map((t) => t.trim())).toEqual([
+    'Start here',
+    'How-to guides (task-oriented)',
+    'Reference (information-oriented)',
+    'Explanation (understanding-oriented)',
+    'Troubleshooting',
+    'Conventions used in these docs',
+    "What’s intentionally NOT here",
+    'Maintenance',
+  ])
+  const kinds = await page.locator('.dx-homebody > *').evaluateAll((els) => els.map((e) => (e.matches('.dx-hsec') ? 'cards' : e.tagName.toLowerCase())))
+  // Nextra may leave an empty wrapper after the content; only the first 17 children carry the layout.
+  expect(kinds.slice(0, 17)).toEqual(['h2', 'cards', 'h2', 'cards', 'h2', 'cards', 'h2', 'cards', 'h2', 'cards', 'hr', 'h2', 'ul', 'h2', 'ul', 'h2', 'ul'])
+})
+
+test('exactly the first card is lit', async ({ page }) => {
+  await page.goto('/')
+  const lit = await page.locator('a.dx-hcard').evaluateAll((cs) => cs.map((c) => getComputedStyle(c).boxShadow !== 'none'))
+  expect(lit.filter(Boolean)).toHaveLength(1)
+  expect(lit[0]).toBe(true)
+})
+
+for (const width of [1024, 900, 768]) {
+  test(`at ${width} the Reference and Explanation labels and rules line up, wrapped heading or not`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    const col = async (n: number) =>
+      page.locator('.dx-homebody').evaluate((body, n) => {
+        const h2 = body.querySelectorAll(':scope > h2')[n - 1] as HTMLElement
+        const sec = body.querySelectorAll(':scope > .dx-hsec')[n - 1] as HTMLElement
+        const cols = sec.querySelector('.cols') as HTMLElement
+        const rule = [h2, cols].find((e) => parseFloat(getComputedStyle(e).borderBottomWidth) > 0)!
+        return { label: cols.getBoundingClientRect().top, rule: rule.getBoundingClientRect().bottom, list: sec.querySelector('.dx-hgrid')!.getBoundingClientRect().top }
+      }, n)
+    const a = await col(3)
+    const b = await col(4)
+    expect(Math.abs(a.label - b.label)).toBeLessThanOrEqual(1)
+    expect(Math.abs(a.rule - b.rule)).toBeLessThanOrEqual(1)
+    expect(a.rule).toBeLessThanOrEqual(a.list)
+    expect(a.label).toBeLessThan(a.rule)
+  })
+}
+
+test('D12: reduced motion leaves the cards still; nothing on the home loops', async ({ browser, baseURL }) => {
+  const ctx = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1440, height: 900 }, baseURL })
   const page = await ctx.newPage()
-  await page.goto('http://127.0.0.1:3320/')
+  await page.goto('/')
   await page.waitForLoadState('networkidle')
   const card = page.locator('.dx-homebody a.dx-hcard').nth(1)
   const b = (await card.boundingBox())!
