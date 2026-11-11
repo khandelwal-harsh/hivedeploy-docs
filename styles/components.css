@@ -58,6 +58,14 @@
   .dx-hdr .nav-cta { margin-left: 0; }
   .menu-btn { display: grid; }
 }
+/* 320 to 359: the header's five items do not fit in 320 px, so the page scrolled sideways. */
+@media (max-width: 359px) {
+  .dx-hdr-in { padding: 0 12px; gap: 6px; }
+  .dx-tag { display: none; }
+  .dx-hdr .btn { padding: 0 6px; font-size: 13px; }
+  .dx-hdr .brand { gap: 8px; }
+  .dx-search.hdr-s, .menu-btn { flex: none; }
+}
 /* The drawer is Nextra's sidebar; its search trigger sits full width at the top. */
 .nextra-sidebar-container .dx-search { width: 100%; margin: 0; cursor: pointer; }
 
@@ -141,4 +149,33 @@
   .dx-mtoc { margin-left: -24px; margin-right: -24px; }
   .dx-mtoc summary { padding: 0 24px; }
   .dx-mtoc ol { margin-left: 24px; margin-right: 24px; }
+}
+
+/* ---------- code blocks (CodeBlock.tsx; theme: lib/shiki-obsidian.mjs) ---------- */
+.dx-code { position: relative; margin: 18px 0 22px; border-radius: 12px; border: 1px solid var(--line); background: var(--code-bg); overflow: hidden; }
+.dx-code-head { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 8px 0 14px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.025); }
+.dx-code-head.bare { justify-content: flex-end; height: 0; border: 0; padding: 0; position: relative; background: transparent; }
+.dx-code-head.bare .dx-copy { position: absolute; right: 8px; top: 8px; z-index: 1; }
+.dx-code-head .chip { border: 0; padding: 0; background: transparent; font-size: 11px; letter-spacing: .08em; color: var(--text-muted); align-self: center; text-transform: none; }
+.dx-copy { width: 28px; height: 28px; padding: 0; border-radius: 7px; display: grid; place-items: center; color: var(--text-muted); background: transparent; border: 1px solid transparent; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+.dx-copy:hover { color: var(--text-strong); border-color: var(--line-strong); background: var(--glass); }
+.dx-copy svg { display: block; }
+.dx-copy .ok { display: none; color: var(--ok); }
+.dx-copy.done svg:first-child { display: none; }
+.dx-copy.done .ok { display: block; }
+.dx-code pre { margin: 0 !important; padding: 14px 18px 16px !important; overflow-x: auto; white-space: pre; background: var(--code-bg) !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.62; color: var(--text); -webkit-text-size-adjust: 100%; }
+.dx-code-head.bare + pre { padding-right: 48px !important; }
+.dx-code pre code { display: block; width: max-content; min-width: 100%; background: transparent !important; border: 0 !important; padding: 0 !important; border-radius: 0; font: inherit; font-size: inherit; white-space: pre; color: inherit; }
+/* Shiki is given one theme for both modes; its light/dark pairs resolve to the same hue. */
+.dx-code pre code span { color: var(--shiki-dark, var(--text)) !important; background-color: transparent !important; }
+.dx-code pre [data-line] { display: inline; }
+.dx-code pre code > span { display: block; padding: 0 18px; margin: 0 -18px; }
+.dx-code pre [data-highlighted-line] { background: rgba(255,255,255,.06); box-shadow: inset 2px 0 var(--line-strong); }
+.dx-callout-body .dx-code { margin: 6px 0 14px; }
+@media (max-width: 767px) {
+  .dx-code { margin-left: -16px; margin-right: -16px; border-radius: 0; border-left: 0; border-right: 0; }
+  /* a bare block's copy button takes its own row on a phone so it never covers the first line */
+  .dx-code-head.bare { height: 34px; padding: 0 8px; }
+  .dx-code-head.bare .dx-copy { position: static; }
+  .dx-code-head.bare + pre { padding-right: 18px !important; padding-top: 4px !important; }
 }

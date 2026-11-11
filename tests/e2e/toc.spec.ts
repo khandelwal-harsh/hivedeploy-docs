@@ -65,15 +65,23 @@ test('a heading with a link in it causes no React errors and the page is not re-
 
 test('no heading is replaced after load', async ({ page }) => {
   await page.addInitScript(() => {
-    const w = window as unknown as { __gone: number }
+    const w = window as unknown as { __gone: number; __article: number }
     w.__gone = 0
+    w.__article = 0
     new MutationObserver((recs) => {
-      for (const r of recs) r.removedNodes.forEach((n) => { if (n instanceof Element && /^H[2-6]$/.test(n.tagName)) w.__gone++ })
+      for (const r of recs)
+        r.removedNodes.forEach((n) => {
+          if (!(n instanceof Element)) return
+          if (/^H[2-6]$/.test(n.tagName)) w.__gone++
+          // a whole-article replacement must not pass silently
+          if (n.matches('article.nextra-content') || n.querySelector('article.nextra-content')) w.__article++
+        })
     }).observe(document, { childList: true, subtree: true })
   })
   await page.goto('/connect-clouds/aws')
   await page.waitForTimeout(1500)
   expect(await page.evaluate(() => (window as unknown as { __gone: number }).__gone)).toBe(0)
+  expect(await page.evaluate(() => (window as unknown as { __article: number }).__article)).toBe(0)
 })
 
 // Review Focus 5
@@ -139,7 +147,8 @@ test('ids are unique in the document', async ({ page }) => {
     const seen = new Map<string, number>()
     document.querySelectorAll('[id]').forEach((e) => seen.set(e.id, (seen.get(e.id) ?? 0) + 1))
     const testids = new Map<string, number>()
-    document.querySelectorAll('[data-testid]').forEach((e) => testids.set(e.getAttribute('data-testid')!, (testids.get(e.getAttribute('data-testid')!) ?? 0) + 1))
+    // test ids name a kind of thing; "code-block" legitimately repeats
+    document.querySelectorAll('[data-testid]:not([data-testid="code-block"])').forEach((e) => testids.set(e.getAttribute('data-testid')!, (testids.get(e.getAttribute('data-testid')!) ?? 0) + 1))
     return [...seen, ...testids].filter(([, n]) => n > 1).map(([k]) => k)
   })
   expect(dup).toEqual([])

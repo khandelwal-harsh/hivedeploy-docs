@@ -52,12 +52,13 @@ article.nextra-content > main { padding-top: 24px; font-size: 16px; line-height:
 .dx-body h2 { font-size: 26px; line-height: 1.25; letter-spacing: -.02em; font-weight: 600; margin: 42px 0 14px; }
 .dx-body h3 { font-size: 19px; line-height: 1.35; letter-spacing: -.01em; font-weight: 600; margin: 26px 0 8px; }
 .dx-body h4 { font-size: 16px; line-height: 1.4; font-weight: 600; margin: 22px 0 6px; }
+.dx-body h5, .dx-body h6 { color: var(--text-strong) !important; font-family: var(--font-sans); font-weight: 600; line-height: 1.4; margin: 18px 0 4px; scroll-margin-top: 24px; }
+.dx-body h5 { font-size: 15px; }
+.dx-body h6 { font-size: 14px; }
 
 /* inline code on glass with a hairline */
 .nextra-content code:not(pre code) { background: var(--glass) !important; border: 1px solid var(--line) !important; border-radius: 6px; padding: 1px 5px; font-size: 13.5px; }
-/* code blocks: Task 6 restyles these */
-.nextra-code pre, pre { font-family: var(--font-mono); background: var(--raised) !important; }
-pre code { background: transparent !important; border: 0 !important; }
+/* code blocks: see components.css (.dx-code) */
 
 /* tables: Task 7 restyles these */
 .nextra-content table { border: 1px solid var(--line) !important; }

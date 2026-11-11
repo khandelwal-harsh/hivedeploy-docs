@@ -13,6 +13,7 @@ import { SearchTrigger } from './components/chrome/SearchTrigger'
 import { PageHead } from './components/chrome/PageHead'
 import { MobileToc, Toc, TocWrapper } from './components/chrome/Toc'
 import { headings } from './components/Heading'
+import { CodeBlock } from './components/mdx/CodeBlock'
 
 function Head() {
   const router = useRouter()
@@ -94,6 +95,7 @@ const config: DocsThemeConfig = {
   footer: { component: SiteFooter as FC },
   components: {
     ...headings,
+    pre: CodeBlock as FC,
     wrapper: TocWrapper as FC,
     Callout: Callout as FC,
     DiataxisBadge: DiataxisBadge as FC,
