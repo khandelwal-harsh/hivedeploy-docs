@@ -9,6 +9,6 @@ export default {
   troubleshooting: 'Troubleshooting',
   changelog: 'Changelog',
   '-- links': { type: 'separator' },
-  proof: { title: 'Reliability ledger', href: 'https://proof.hivedeploy.in', newWindow: true, theme: { pagination: false } },
-  www: { title: 'HiveDeploy', href: 'https://www.hivedeploy.in', newWindow: true, theme: { pagination: false } },
+  proof: { title: 'Reliability ledger', href: 'https://proof.hivedeploy.in', newWindow: true },
+  www: { title: 'HiveDeploy', href: 'https://www.hivedeploy.in', newWindow: true },
 }

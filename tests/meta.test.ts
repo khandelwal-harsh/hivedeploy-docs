@@ -9,7 +9,7 @@ describe('root _meta', () => {
     const m = meta as Record<string, unknown>
     expect(m['changelog']).toBe('Changelog')
     expect(m['-- links']).toEqual({ type: 'separator' })
-    expect(m['proof']).toEqual({ title: 'Reliability ledger', href: 'https://proof.hivedeploy.in', newWindow: true, theme: { pagination: false } })
-    expect(m['www']).toEqual({ title: 'HiveDeploy', href: 'https://www.hivedeploy.in', newWindow: true, theme: { pagination: false } })
+    expect(m['proof']).toEqual({ title: 'Reliability ledger', href: 'https://proof.hivedeploy.in', newWindow: true })
+    expect(m['www']).toEqual({ title: 'HiveDeploy', href: 'https://www.hivedeploy.in', newWindow: true })
   })
 })

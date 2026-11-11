@@ -13,13 +13,34 @@ test('header: 56 px, solid, every link where it should go', async ({ page }) => 
   await expect(h.getByRole('link', { name: /github/i })).toHaveCount(0)
 })
 
-test('the skip link is the first focusable element and lands on the content', async ({ page }) => {
+test('the skip link is the first focusable element, and Enter moves into the content', async ({ page }) => {
   await page.goto('/quickstart')
   await page.keyboard.press('Tab')
   const skip = page.getByRole('link', { name: 'Skip to content' })
   await expect(skip).toBeFocused()
   await expect(skip).toBeVisible()
-  await expect(page.locator('#reach-skip-nav')).toHaveCount(1)
+  await page.keyboard.press('Enter')
+  expect(await page.evaluate(() => location.hash)).toBe('#reach-skip-nav')
+  await page.keyboard.press('Tab')
+  const where = await page.evaluate(() => {
+    const a = document.activeElement as HTMLElement
+    return { inHeader: !!a.closest('[data-testid="docs-header"]'), inContent: !!a.closest('main, article, .nextra-content') }
+  })
+  expect(where).toEqual({ inHeader: false, inContent: true })
+})
+
+test('tablet: Sign in stays visible and goes to the app', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 })
+  await page.goto('/quickstart')
+  const l = page.getByTestId('docs-header').getByRole('link', { name: 'Sign in' })
+  await expect(l).toBeVisible()
+  await expect(l).toHaveAttribute('href', 'https://app.hivedeploy.in/login')
+})
+
+test('footer wordmark: bg fill, 2 px stroke, stroke painted first', async ({ page }) => {
+  await page.goto('/quickstart')
+  const st = await page.locator('footer .wordmark').evaluate((e) => { const c = getComputedStyle(e); return { color: c.color, w: c.webkitTextStrokeWidth, sc: c.webkitTextStrokeColor, po: c.paintOrder } })
+  expect(st.color).toBe('rgb(8, 8, 10)'); expect(st.w).toBe('2px'); expect(st.sc).toBe('rgba(255, 255, 255, 0.16)'); expect(st.po).toMatch(/^stroke/)
 })
 
 test('the sidebar lists Changelog by its title, then the two property links', async ({ page }) => {
@@ -34,7 +55,7 @@ test('the sidebar lists Changelog by its title, then the two property links', as
 
 test('the last page has no "next" that leaves the site', async ({ page }) => {
   await page.goto('/changelog')
-  await expect(page.locator('main a[title="Reliability ledger"], main a[title="HiveDeploy"], main a[href="https://www.hivedeploy.in"]')).toHaveCount(0)
+  await expect(page.locator('main a[href^="https://proof"][title], main a[title="Reliability ledger"], main a[title="HiveDeploy"], main a[href="https://www.hivedeploy.in"]')).toHaveCount(0)
 })
 
 test("footer is www's", async ({ page }) => {

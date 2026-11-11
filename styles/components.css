@@ -6,7 +6,8 @@
 @media (min-width: 768px) {
   .nextra-sidebar-container { top: 56px !important; }
 }
-a { color: inherit; text-decoration: none; }
+
+.dx-hdr a, .dx-footer a { color: inherit; text-decoration: none; }
 
 /* ---------- brand, buttons ---------- */
 .swarm { width: 24px; height: 24px; display: block; flex: 0 0 24px; }
@@ -46,11 +47,11 @@ a { color: inherit; text-decoration: none; }
 .menu-btn:hover { background: var(--glass-hover); }
 
 @media (max-width: 1023px) {
-  .dx-tabs, .dx-hdr .links, .nav-cta .btn.ghost { display: none; }
+  .dx-tabs, .dx-hdr .links { display: none; }
 }
 @media (max-width: 767px) {
   .dx-hdr-in { padding: 0 16px; gap: 10px; }
-  .crumb-sep { display: none; }
+  .crumb-sep, .nav-cta .btn.ghost { display: none; }
   .dx-search.hdr-s { width: 38px; padding: 0; justify-content: center; margin-left: auto; }
   .dx-search.hdr-s .ph, .dx-search.hdr-s .kbd { display: none; }
   .dx-hdr .nav-cta { margin-left: 0; }
@@ -70,7 +71,7 @@ a { color: inherit; text-decoration: none; }
 .foot-grid ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .foot-grid li a { font-size: 14px; color: var(--text-muted); transition: color .2s; }
 .foot-grid li a:hover, .foot-grid .email:hover { color: var(--text-strong); }
-.wordmark { position: relative; margin-top: 56px; height: 132px; overflow: hidden; font-family: var(--font-sans); font-size: 160px; line-height: .86; font-weight: 700; letter-spacing: -.055em; color: rgba(255,255,255,0.05); text-align: center; user-select: none; }
+.wordmark { position: relative; margin-top: 56px; height: 132px; overflow: hidden; font-family: var(--font-sans); font-size: 160px; line-height: .86; font-weight: 700; letter-spacing: -.055em; color: var(--bg); -webkit-text-stroke: 2px var(--line-strong); paint-order: stroke fill; text-align: center; user-select: none; }
 .legal { display: flex; justify-content: space-between; gap: 20px; padding: 20px 0 24px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text-muted); font-family: var(--font-mono); }
 @media (max-width: 767px) {
   .dx-footer { padding-top: 48px; }
