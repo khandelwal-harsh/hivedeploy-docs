@@ -48,7 +48,7 @@ article.nextra-content > main { padding-top: 24px; font-size: 16px; line-height:
 .dx-body strong { color: var(--text-strong); font-weight: 600; }
 .dx-body li::marker { color: var(--text-muted); }
 
-.dx-body h2, .dx-body h3, .dx-body h4 { color: var(--text-strong) !important; font-family: var(--font-sans); border: 0; padding: 0; scroll-margin-top: 80px; }
+.dx-body h2, .dx-body h3, .dx-body h4 { color: var(--text-strong) !important; font-family: var(--font-sans); border: 0; padding: 0; scroll-margin-top: 24px; }
 .dx-body h2 { font-size: 26px; line-height: 1.25; letter-spacing: -.02em; font-weight: 600; margin: 42px 0 14px; }
 .dx-body h3 { font-size: 19px; line-height: 1.35; letter-spacing: -.01em; font-weight: 600; margin: 26px 0 8px; }
 .dx-body h4 { font-size: 16px; line-height: 1.4; font-weight: 600; margin: 22px 0 6px; }
@@ -64,11 +64,11 @@ pre code { background: transparent !important; border: 0 !important; }
 .nextra-content th { background: var(--raised) !important; font-family: var(--font-mono) !important; color: var(--text-strong) !important; }
 .nextra-content td { border-top: 1px solid var(--line) !important; }
 
-/* links in prose: accent text, accent-edge underline */
-.nextra-content :is(p, li, td, th, blockquote, dd, summary) a:not(.subheading-anchor) {
+/* links in prose: accent text, accent-edge underline (the collapsed contents list is not prose) */
+.nextra-content :is(p, li, td, th, blockquote, dd, summary) a:not(.subheading-anchor):not(.dx-mtoc a) {
   color: var(--accent-text) !important; text-decoration: underline; text-underline-offset: 3px;
   text-decoration-color: var(--accent-edge); transition: text-decoration-color .2s, color .2s; }
-.nextra-content :is(p, li, td, th, blockquote, dd, summary) a:not(.subheading-anchor):hover { text-decoration-color: var(--accent); }
+.nextra-content :is(p, li, td, th, blockquote, dd, summary) a:not(.subheading-anchor):not(.dx-mtoc a):hover { text-decoration-color: var(--accent); }
 
 /* ---------- previous / next: two hairline cards ---------- */
 .dx-pn > div { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0; padding: 0; border: 0; }

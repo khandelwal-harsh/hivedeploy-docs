@@ -11,7 +11,8 @@ import { DocsHeader } from './components/chrome/DocsHeader'
 import { SiteFooter } from './components/chrome/SiteFooter'
 import { SearchTrigger } from './components/chrome/SearchTrigger'
 import { PageHead } from './components/chrome/PageHead'
-import { Toc } from './components/chrome/Toc'
+import { MobileToc, Toc, TocWrapper } from './components/chrome/Toc'
+import { headings } from './components/Heading'
 
 function Head() {
   const router = useRouter()
@@ -63,6 +64,7 @@ function Main({ children }: { children: ReactNode }) {
     return (
       <div className="dx-body">
         <PageHead />
+        <MobileToc />
         {children}
         <div className="dx-pagefoot">
           <FeedbackWidget />
@@ -74,6 +76,7 @@ function Main({ children }: { children: ReactNode }) {
   return (
     <div className="dx-body">
       <PageHead />
+      <MobileToc />
       {Children.toArray(raw.slice(0, 4))}
       <div className="dx-pagefoot">
         <FeedbackWidget />
@@ -90,6 +93,8 @@ const config: DocsThemeConfig = {
   docsRepositoryBase: 'https://github.com/khandelwal-harsh/hivedeploy-docs/blob/main',
   footer: { component: SiteFooter as FC },
   components: {
+    ...headings,
+    wrapper: TocWrapper as FC,
     Callout: Callout as FC,
     DiataxisBadge: DiataxisBadge as FC,
     ScalarReference: ScalarReference as FC,

@@ -73,7 +73,7 @@ test("phone: the menu button opens Nextra's drawer with the search trigger and t
   await b.click()
   await expect(b).toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator('.nextra-sidebar-container').getByRole('link', { name: 'Postgres', exact: true })).toBeVisible()
-  await expect(page.locator('.nextra-sidebar-container').getByTestId('search-trigger')).toBeVisible()
+  await expect(page.locator('.nextra-sidebar-container').getByTestId('search-trigger-menu')).toBeVisible()
 })
 
 test('chrome link colours survive the reset', async ({ page }) => {

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
-import { useThemeConfig } from 'nextra-theme-docs'
+import { createContext, createElement, useContext, useEffect, useState } from 'react'
+import type { ComponentType, ReactElement, ReactNode } from 'react'
+import { getComponents, useConfig, useThemeConfig } from 'nextra-theme-docs'
+import { removeLinks } from 'nextra/remove-links'
 
-type Heading = { id: string; value: string; depth: number }
+type Heading = { id: string; value: ReactElement | string; depth: number }
 
 /** The id of the last heading whose top sits above 30% of the viewport, or null before the first. */
 function readActive(ids: string[]): string | null {
@@ -15,37 +16,16 @@ function readActive(ids: string[]): string | null {
   return active
 }
 
-function List({ items, active }: { items: Heading[]; active: string | null }) {
-  return (
-    <ol>
-      {items.map((h) => (
-        <li key={h.id} className={h.depth === 3 ? 'l3' : 'l2'}>
-          <a
-            href={`#${h.id}`}
-            className={h.id === active ? 'on' : undefined}
-            aria-current={h.id === active ? 'location' : undefined}
-          >
-            {h.value}
-          </a>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-export function Toc({ toc, filePath }: { toc: Heading[]; filePath: string }) {
-  const theme = useThemeConfig()
-  const feedbackHref = theme.feedback.useLink()
-  const items = toc.filter((h) => h.depth === 2 || h.depth === 3)
+/** Passive, rAF-throttled tracker shared by the rail and the collapsed list. */
+function useActiveHeading(ids: string[]): string | null {
   const [active, setActive] = useState<string | null>(null)
-  const key = items.map((h) => h.id).join('|')
-
+  const key = ids.join('|')
   useEffect(() => {
-    const ids = key ? key.split('|') : []
+    const list = key ? key.split('|') : []
     let frame = 0
     const update = () => {
       frame = 0
-      setActive(readActive(ids))
+      setActive(readActive(list))
     }
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update)
@@ -59,29 +39,78 @@ export function Toc({ toc, filePath }: { toc: Heading[]; filePath: string }) {
       if (frame) cancelAnimationFrame(frame)
     }
   }, [key])
+  return active
+}
 
-  if (items.length === 0) return null
+const outline = (toc: Heading[] | undefined) => (toc ?? []).filter((h) => h.depth === 2 || h.depth === 3)
 
+function List({ items, active }: { items: Heading[]; active: string | null }) {
   return (
-    <>
-      <aside data-testid="toc" className="dx-toc" aria-label="On this page">
-        <span className="label mono">On this page</span>
-        <List items={items} active={active} />
-        <div className="dx-toc-foot">
-          {theme.feedback.content ? (
-            <a href={feedbackHref} target="_blank" rel="noreferrer">
-              {theme.feedback.content as ReactNode}
-            </a>
-          ) : null}
-          <a href={`${theme.docsRepositoryBase}/${filePath}`} target="_blank" rel="noreferrer">
-            Edit this page
+    <ol>
+      {items.map((h) => (
+        <li key={h.id} className={h.depth === 3 ? 'l3' : 'l2'}>
+          <a
+            href={`#${h.id}`}
+            className={h.id === active ? 'on' : undefined}
+            aria-current={h.id === active ? 'location' : undefined}
+          >
+            {removeLinks(h.value)}
           </a>
-        </div>
-      </aside>
-      <details className="dx-mtoc">
-        <summary>On this page</summary>
-        <List items={items} active={active} />
-      </details>
-    </>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+export function Toc({ toc, filePath }: { toc: Heading[]; filePath: string }) {
+  const theme = useThemeConfig()
+  const feedbackHref = theme.feedback.useLink()
+  const items = outline(toc)
+  const active = useActiveHeading(items.map((h) => h.id))
+  if (items.length === 0) return null
+  return (
+    <aside data-testid="toc" className="dx-toc" aria-label="On this page">
+      <span className="label mono">On this page</span>
+      <List items={items} active={active} />
+      <div className="dx-toc-foot">
+        {theme.feedback.content ? (
+          <a href={feedbackHref} target="_blank" rel="noreferrer">
+            {theme.feedback.content as ReactNode}
+          </a>
+        ) : null}
+        <a href={`${theme.docsRepositoryBase}/${filePath}`} target="_blank" rel="noreferrer">
+          Edit this page
+        </a>
+      </div>
+    </aside>
+  )
+}
+
+/** The page's headings, handed from Nextra's wrapper to Main, which sits inside it. */
+const TocContext = createContext<Heading[]>([])
+
+type WrapperProps = { toc: Heading[]; children: ReactNode }
+const nextraWrapper = getComponents({ isRawLayout: false, components: {} }).wrapper as ComponentType<WrapperProps>
+
+/** Module-level, so its type is stable across renders. Delegates to Nextra's own wrapper. */
+export function TocWrapper(props: WrapperProps) {
+  return <TocContext.Provider value={props.toc}>{createElement(nextraWrapper, props)}</TocContext.Provider>
+}
+
+/** Below 1280 px the rail is hidden; this collapsed list sits in the article after the title block. */
+export function MobileToc() {
+  const items = outline(useContext(TocContext))
+  const { normalizePagesResult } = useConfig()
+  const ctx = normalizePagesResult.activeThemeContext
+  const active = useActiveHeading(items.map((h) => h.id))
+  if (items.length === 0 || !ctx.toc || ctx.layout !== 'default') return null
+  return (
+    <details className="dx-mtoc">
+      <summary>
+        <span>On this page</span>
+        <span className="chev" aria-hidden="true">⌄</span>
+      </summary>
+      <List items={items} active={active} />
+    </details>
   )
 }

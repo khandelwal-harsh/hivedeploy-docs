@@ -1,10 +1,11 @@
 import { openSearch } from '../../lib/search-store'
 
+/** The header's trigger is `search-trigger`; the drawer's copy (no className) is `search-trigger-menu`. */
 export function SearchTrigger({ className = '' }: { className?: string }) {
   return (
     <button
       type="button"
-      data-testid="search-trigger"
+      data-testid={className.includes('hdr-s') ? 'search-trigger' : 'search-trigger-menu'}
       className={`dx-search ${className}`.trim()}
       aria-label="Search documentation"
       aria-keyshortcuts="Meta+K Control+K"
