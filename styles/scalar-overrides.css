@@ -19,9 +19,14 @@
   --scalar-button-1: var(--accent);
   --scalar-button-1-color: var(--on-accent);
   --scalar-button-1-hover: var(--accent-hover);
+  --scalar-link-color: var(--accent-text);
+  --scalar-link-color-hover: var(--accent-hover);
   --scalar-font: var(--font-sans);
   --scalar-font-code: var(--font-mono);
   --scalar-radius: 8px;
   --scalar-radius-lg: 12px;
   --scalar-radius-xl: 16px;
 }
+
+/* The site's preflight sets `* { border-color }`, which beats Scalar's own `:where()` reset. */
+.scalar-app * { border-color: var(--scalar-border-color); }

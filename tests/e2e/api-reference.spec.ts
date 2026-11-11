@@ -63,3 +63,44 @@ test('no request leaves the site', async ({ page }) => {
   await page.waitForLoadState('networkidle')
   expect(foreign).toEqual([])
 })
+
+test('Scalar links take the prose link colour', async ({ page }) => {
+  await page.goto('/reference/api-reference')
+  const app = page.locator('.scalar-app').first()
+  await app.waitFor()
+  const prose = await page.locator('article.nextra-content p a').first().evaluate((e) => getComputedStyle(e).color)
+  expect(prose).toBe('rgb(247, 194, 68)')
+  await expect(app.getByRole('link', { name: /Download OpenAPI/i })).toHaveCSS('color', prose)
+})
+
+test('Scalar borders take --line, not the preflight grey', async ({ page }) => {
+  await page.goto('/reference/api-reference')
+  const app = page.locator('.scalar-app').first()
+  await app.waitFor()
+  const colours = await app.evaluate((e) => {
+    const out: string[] = []
+    e.querySelectorAll('*').forEach((el) => {
+      const c = getComputedStyle(el)
+      if (parseFloat(c.borderTopWidth) > 0 && c.borderTopStyle !== 'none' && c.borderTopColor !== 'rgba(0, 0, 0, 0)') out.push(c.borderTopColor)
+    })
+    return out
+  })
+  expect(colours.length).toBeGreaterThan(0)
+  // --line is rgba(255,255,255,0.08); every visible border in Scalar must be that or a deliberate token
+  expect(colours).not.toContain('rgb(229, 231, 235)')
+  expect(colours.filter((c) => c === 'rgba(255, 255, 255, 0.08)').length).toBeGreaterThan(0)
+})
+
+test('the page head clears the header like /quickstart does', async ({ page }) => {
+  const top = async (path: string, sel: string) => {
+    await page.goto(path)
+    const head = await page.locator(sel).first().evaluate((e) => e.getBoundingClientRect().top)
+    const hdr = await page.getByTestId('docs-header').evaluate((e) => e.getBoundingClientRect().bottom)
+    return { head, hdr }
+  }
+  const ref = await top('/reference/api-reference', '.dx-title')
+  expect(ref.head).toBeGreaterThanOrEqual(ref.hdr + 20)
+  await page.goto('/quickstart')
+  const qs = await page.locator('.nextra-breadcrumb').first().evaluate((e) => e.getBoundingClientRect().top)
+  expect(Math.abs(ref.head - qs)).toBeLessThanOrEqual(4 + 0)
+})

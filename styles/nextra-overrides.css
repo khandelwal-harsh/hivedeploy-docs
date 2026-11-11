@@ -39,6 +39,8 @@
 
 /* Default-layout articles only. Full-layout pages (home, API reference) render no <main> and keep their width. */
 article.nextra-content > main { padding-top: 24px; font-size: 16px; line-height: 1.7; }
+/* Full-layout article pages (API reference) have no <main>: give the page head the same 24px. The home page is .dx-home. */
+article.nextra-content .dx-body:not(:has(main)) { padding-top: 24px; }
 @media (min-width: 768px) {
   article.nextra-content > main { max-width: 720px; padding-left: 0; padding-right: 0; }
 }

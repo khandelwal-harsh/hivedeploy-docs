@@ -23,9 +23,20 @@ export function ScalarReference() {
     const root = ref.current
     if (!root) return
     demoteScalarTitle(root)
-    const observer = new MutationObserver(() => demoteScalarTitle(root))
+    // Batch: at most one query per frame, however many nodes a large spec mutates.
+    let frame = 0
+    const observer = new MutationObserver(() => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        demoteScalarTitle(root)
+      })
+    })
     observer.observe(root, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      if (frame) cancelAnimationFrame(frame)
+    }
   }, [])
 
   return (
