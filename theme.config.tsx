@@ -1,3 +1,4 @@
+import { Children, isValidElement, useEffect } from 'react'
 import type { FC, ReactNode } from 'react'
 import type { DocsThemeConfig } from 'nextra-theme-docs'
 import { useConfig } from 'nextra-theme-docs'
@@ -9,6 +10,7 @@ import { ScalarReference } from './components/ScalarReference'
 import { DocsHeader } from './components/chrome/DocsHeader'
 import { SiteFooter } from './components/chrome/SiteFooter'
 import { SearchTrigger } from './components/chrome/SearchTrigger'
+import { PageHead } from './components/chrome/PageHead'
 
 function Head() {
   const router = useRouter()
@@ -40,6 +42,46 @@ function Head() {
   )
 }
 
+/**
+ * Nextra hands `main` one fragment: [topContent, article, timestamp, bottomContent, pagination].
+ * The feedback widget goes between the article and the pagination, so the page foot reads
+ * feedback, then previous / next. If the shape ever differs, the widget is appended instead.
+ */
+function Main({ children }: { children: ReactNode }) {
+  const { pathname, asPath } = useRouter()
+  // Nextra marks the open page with an `active` class only; assistive tech and the pill style want aria-current.
+  useEffect(() => {
+    const side = document.querySelector('.nextra-sidebar-container')
+    side?.querySelectorAll('a[aria-current="page"]').forEach((a) => a.removeAttribute('aria-current'))
+    side?.querySelectorAll('li.active > a').forEach((a) => a.setAttribute('aria-current', 'page'))
+  }, [asPath])
+  if (pathname === '/') return <>{children}</>
+  const parts = isValidElement<{ children?: ReactNode }>(children) ? children.props.children : undefined
+  const raw = Array.isArray(parts) && parts.length === 5 ? (parts as ReactNode[]) : null
+  if (!raw) {
+    return (
+      <div className="dx-body">
+        <PageHead />
+        {children}
+        <div className="dx-pagefoot">
+          <FeedbackWidget />
+        </div>
+      </div>
+    )
+  }
+  const pagination = raw[4]
+  return (
+    <div className="dx-body">
+      <PageHead />
+      {Children.toArray(raw.slice(0, 4))}
+      <div className="dx-pagefoot">
+        <FeedbackWidget />
+        {pagination ? <div className="dx-pn">{pagination}</div> : null}
+      </div>
+    </div>
+  )
+}
+
 const config: DocsThemeConfig = {
   navbar: { component: DocsHeader as FC },
   search: { component: SearchTrigger as FC, placeholder: 'Search documentation…' },
@@ -51,12 +93,8 @@ const config: DocsThemeConfig = {
     DiataxisBadge: DiataxisBadge as FC,
     ScalarReference: ScalarReference as FC,
   },
-  main: (({ children }: { children: ReactNode }) => (
-    <>
-      {children}
-      <FeedbackWidget />
-    </>
-  )) as FC<{ children: ReactNode }>,
+  gitTimestamp: null,
+  main: Main as FC<{ children: ReactNode }>,
   darkMode: false,
   nextThemes: { defaultTheme: 'dark', forcedTheme: 'dark' },
   color: { hue: 44, saturation: 99 },
