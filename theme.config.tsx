@@ -6,6 +6,9 @@ import { Callout } from './components/Callout'
 import { DiataxisBadge } from './components/DiataxisBadge'
 import { FeedbackWidget } from './components/FeedbackWidget'
 import { ScalarReference } from './components/ScalarReference'
+import { DocsHeader } from './components/chrome/DocsHeader'
+import { SiteFooter } from './components/chrome/SiteFooter'
+import { SearchTrigger } from './components/chrome/SearchTrigger'
 
 function Head() {
   const router = useRouter()
@@ -38,19 +41,11 @@ function Head() {
 }
 
 const config: DocsThemeConfig = {
-  logo: (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.55rem', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-      <img src="/favicon.svg" alt="" width={20} height={20} />
-      hivedeploy / docs
-    </span>
-  ),
-  project: {
-    link: 'https://github.com/khandelwal-harsh/hivedeploy-docs',
-  },
+  navbar: { component: DocsHeader as FC },
+  search: { component: SearchTrigger as FC, placeholder: 'Search documentation…' },
+  sidebar: { toggleButton: false, autoCollapse: false },
   docsRepositoryBase: 'https://github.com/khandelwal-harsh/hivedeploy-docs/blob/main',
-  footer: {
-    content: <span>© {new Date().getFullYear()} Hivedeploy</span>,
-  },
+  footer: { component: SiteFooter as FC },
   components: {
     Callout: Callout as FC,
     DiataxisBadge: DiataxisBadge as FC,

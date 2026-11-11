@@ -4,13 +4,14 @@ import type { NextRequest } from 'next/server'
 export const config = { runtime: 'edge' }
 
 const COLORS = {
-  surface1: '#0f0f0f',
-  foreground: '#ededed',
-  foregroundStrong: '#fafafa',
-  foregroundMuted: '#888',
-  foregroundFaint: '#555',
-  info: '#60a5fa',
-  border: '#1f1f1f',
+  surface1: '#08080A',
+  foreground: '#D6D6D2',
+  foregroundStrong: '#F5F5F2',
+  foregroundMuted: '#9A9A96',
+  foregroundFaint: '#82827F',
+  accent: '#F5B301',
+  onAccent: '#1A1200',
+  border: 'rgba(255,255,255,0.16)',
 }
 
 export default function handler(req: NextRequest) {
@@ -28,7 +29,7 @@ export default function handler(req: NextRequest) {
           flexDirection: 'column',
           background: COLORS.surface1,
           padding: '80px',
-          fontFamily: 'monospace',
+          fontFamily: 'sans-serif',
           position: 'relative',
         }}
       >
@@ -36,29 +37,18 @@ export default function handler(req: NextRequest) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '0.75rem',
             color: COLORS.foregroundStrong,
             fontSize: 32,
             fontWeight: 600,
           }}
         >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              background: COLORS.info,
-              borderRadius: 6,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: COLORS.surface1,
-              fontSize: 20,
-              fontWeight: 700,
-            }}
-          >
-            h
-          </div>
-          <span>hivedeploy</span>
+          <svg width="40" height="40" viewBox="0 0 100 100">
+            <path d="M32 19 46.72 27.5V44.5L32 53 17.28 44.5V27.5Z" fill="none" stroke={COLORS.border} strokeWidth="5.5" strokeLinejoin="round" />
+            <path d="M68 19 82.72 27.5V44.5L68 53 53.28 44.5V27.5Z" fill={COLORS.accent} />
+            <path d="M50 50 64.72 58.5V75.5L50 84 35.28 75.5V58.5Z" fill="none" stroke={COLORS.border} strokeWidth="5.5" strokeLinejoin="round" />
+          </svg>
+          <span>HiveDeploy</span>
           <span style={{ color: COLORS.foregroundFaint }}>/</span>
           <span style={{ color: COLORS.foregroundMuted }}>docs</span>
         </div>

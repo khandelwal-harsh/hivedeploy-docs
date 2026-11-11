@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/react'
 import '../styles/globals.css'
 import '../styles/nextra-overrides.css'
+import '../styles/components.css'
 import '../styles/scalar-overrides.css'
 
 export default function App({ Component, pageProps }: AppProps) {

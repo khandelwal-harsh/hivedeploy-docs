@@ -7,4 +7,8 @@ export default {
   'use-the-agents': 'Use the agents',
   reference: 'Reference',
   troubleshooting: 'Troubleshooting',
+  changelog: 'Changelog',
+  '-- links': { type: 'separator' },
+  proof: { title: 'Reliability ledger', href: 'https://proof.hivedeploy.in', newWindow: true, theme: { pagination: false } },
+  www: { title: 'HiveDeploy', href: 'https://www.hivedeploy.in', newWindow: true, theme: { pagination: false } },
 }
