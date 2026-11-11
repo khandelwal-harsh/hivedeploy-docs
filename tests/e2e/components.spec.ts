@@ -149,3 +149,29 @@ test('each table region is named from the heading before it; tables that would s
   await page.goto('/reference/env-vars')
   await expect(page.getByRole('region', { name: 'Table: Required', exact: true })).toHaveCount(1)
 })
+
+test('a table region is a tab stop only while it scrolls, and keeps its role and name; a resize updates it', async ({ page }) => {
+  const read = () =>
+    page.locator('article .dx-table').evaluateAll((bs) =>
+      bs.map((b) => ({ scrolls: b.scrollWidth > b.clientWidth, tab: b.getAttribute('tabindex'), role: b.getAttribute('role'), name: b.getAttribute('aria-label') })),
+    )
+  const agree = (s: Awaited<ReturnType<typeof read>>) => s.every((x) => (x.tab === '0') === x.scrolls && x.role === 'region' && /^Table/.test(x.name ?? ''))
+  await page.setViewportSize({ width: 1440, height: 900 })
+  for (const path of ['/reference/env-vars', '/connect-clouds/aws', '/reference/agents-list']) {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    await expect.poll(async () => agree(await read()), path).toBe(true)
+  }
+  // env-vars has eleven tables and none is wider than the article at 1440: none is a tab stop
+  await page.goto('/reference/env-vars')
+  await page.waitForLoadState('networkidle')
+  const wide = await read()
+  expect(wide.length).toBeGreaterThan(5)
+  expect(wide.filter((x) => x.scrolls)).toEqual([])
+  await expect.poll(async () => (await read()).filter((x) => x.tab !== null).length).toBe(0)
+  // on a phone they all scroll in their own box, so they all take a tab stop; widening takes it away again
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect.poll(async () => (await read()).every((x) => x.scrolls && x.tab === '0')).toBe(true)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect.poll(async () => (await read()).every((x) => !x.scrolls && x.tab === null)).toBe(true)
+})

@@ -26,6 +26,9 @@
   --scalar-radius: 8px;
   --scalar-radius-lg: 12px;
   --scalar-radius-xl: 16px;
+  /* Scalar's offset for a host page's own fixed header: its sticky endpoint list and code cards stop under ours
+     (56 px) instead of behind it. Its layout reads it into --scalar-y-offset, then --refs-header-height. */
+  --scalar-custom-header-height: var(--header-h);
 }
 
 /* The site's preflight sets `* { border-color }`, which beats Scalar's own `:where()` reset. Zero specificity here, so Scalar's border-red / border-c-3 utilities still win. */

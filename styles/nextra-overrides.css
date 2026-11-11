@@ -37,10 +37,14 @@
    here. Components set their own colour on their children; nothing below relies on this for them. */
 .nextra-content { color: var(--text) !important; }
 
-/* Default-layout articles only. Full-layout pages (home, API reference) render no <main> and keep their width. */
+/* Default-layout articles only: Nextra's <main> is the article's own child there. Full-layout pages (home, API
+   reference) get their <main> one level down (theme.config.tsx Main), so none of these rules reach them. */
 article.nextra-content > main { padding-top: 24px; font-size: 16px; line-height: 1.7; }
-/* Full-layout article pages (API reference) have no <main>: give the page head the same 24px. The home page is .dx-home. */
-article.nextra-content .dx-body:not(:has(main)) { padding-top: 24px; }
+/* A full-layout article page (API reference) has no `article > main` padding: give its page head the same 24 px, so it
+   clears the header as a default page's breadcrumb does. The home page is .dx-home and has no .dx-body. */
+article.nextra-content:not(:has(> main)) .dx-body { padding-top: 24px; }
+/* On the API reference the prose above Scalar keeps the reading measure; Scalar itself keeps the full width (D13). */
+.dx-full .dx-body > :has(~ .dx-scalar) { max-width: 720px; }
 @media (min-width: 768px) {
   article.nextra-content > main { max-width: 720px; padding-left: 0; padding-right: 0; }
   /* The column keeps 32 px from the sidebar rule and from the rail or the window edge. Without it, from 768 to about

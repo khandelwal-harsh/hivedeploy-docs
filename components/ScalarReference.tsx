@@ -40,13 +40,15 @@ export function ScalarReference() {
   }, [])
 
   return (
-    <div ref={ref}>
+    <div ref={ref} className="dx-scalar">
       <ApiReferenceReact
         configuration={{
           spec: { url: '/openapi.json' },
           theme: 'none',
           layout: 'modern',
-          hideClientButton: false,
+          // The page asks readers to paste a live session token; Scalar's "Open API Client" button would carry them to
+          // its hosted client (client.scalar.com, a third-party origin). Re-enabling it is an owner call.
+          hideClientButton: true,
           hideDownloadButton: false,
           darkMode: true,
           forceDarkModeState: 'dark',

@@ -36,6 +36,20 @@ test('only default-layout articles are clamped to 720; the home and the API page
   }
 })
 
+test('a default article title sits 18 px under its breadcrumb, at DC1’s height (116)', async ({ page }) => {
+  for (const path of ['/quickstart', '/connect-clouds/aws', '/changelog']) {
+    await page.goto(path)
+    const r = await page.evaluate(() => ({
+      crumb: document.querySelector('.nextra-breadcrumb')!.getBoundingClientRect(),
+      title: document.querySelector('.dx-title')!.getBoundingClientRect().top,
+    }))
+    // the breadcrumb's own 18 px margin is the only space between them
+    expect(Math.round(r.title - r.crumb.bottom), path).toBe(18)
+    // header 56 + the article's 24 + an 18 px breadcrumb line + 18
+    if (r.crumb.height < 20) expect(Math.round(r.title), path).toBe(116)
+  }
+})
+
 test('each page has one h1, its frontmatter title, then the badge', async ({ page }) => {
   for (const [path, title, kind] of [
     ['/connect-clouds/aws', 'Connect an AWS account', 'How-to'],

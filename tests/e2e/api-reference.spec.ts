@@ -133,3 +133,78 @@ test("the border reset does not flatten Scalar's coloured border utilities", asy
   expect(r.red.out).toBe(r.wantRed)
   expect(r.c3.out).toBe(r.wantC3)
 })
+
+test("no control sends readers to Scalar's hosted client: the page asks them for a live session token", async ({ page }) => {
+  await page.goto('/reference/api-reference')
+  const app = page.locator('.scalar-app').first()
+  await app.waitFor()
+  await page.waitForLoadState('networkidle')
+  await expect(app.getByText(/Open API Client/i)).toHaveCount(0)
+  await expect(page.locator('a[href*="client.scalar.com"], a[href*="proxy.scalar.com"]')).toHaveCount(0)
+})
+
+test('the prose above Scalar keeps the 720 px measure; Scalar keeps the full width (D13)', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 1280)
+  await page.goto('/reference/api-reference')
+  await page.locator('.scalar-app').first().waitFor()
+  const r = await page.evaluate(() => {
+    const kids = [...document.querySelector('.dx-body')!.children]
+    const at = kids.findIndex((k) => k.querySelector('.scalar-app'))
+    return {
+      prose: kids.slice(0, at).map((k) => ({ el: `${k.tagName.toLowerCase()}.${k.className}`.slice(0, 40), w: Math.round(k.getBoundingClientRect().width) })),
+      app: document.querySelector('.scalar-app')!.getBoundingClientRect().width,
+    }
+  })
+  // the title, the badge, the intro, "How to try endpoints", its paragraph, the callout, "Reference"
+  expect(r.prose.length).toBeGreaterThanOrEqual(7)
+  for (const { el, w } of r.prose) expect(w, el).toBeLessThanOrEqual(720)
+  expect(r.app).toBeGreaterThan(720)
+})
+
+// The suite's server serves the stub spec, which has no endpoints, so Scalar draws no navigation or code cards and the
+// offset could not be seen. This test hands Scalar tests/fixtures/openapi.endpoints.json instead. A server built with
+// OPENAPI_SOURCE_URL=file://<repo>/tests/fixtures/openapi.endpoints.json serves the fixture itself, and the route is skipped.
+test("with a spec that has endpoints, Scalar's sticky navigation and code cards stay below the 56 px header", async ({ page, request }) => {
+  const served = (await (await request.get('/openapi.json')).json()) as { paths?: Record<string, unknown> }
+  if (!Object.keys(served.paths ?? {}).length)
+    await page.route('**/openapi.json', (r) => r.fulfill({ path: 'tests/fixtures/openapi.endpoints.json', contentType: 'application/json' }))
+  const foreign: string[] = []
+  page.on('request', (r) => {
+    const u = new URL(r.url())
+    if (u.protocol.startsWith('http') && !/^(127\.0\.0\.1|localhost)$/.test(u.hostname)) foreign.push(r.url())
+  })
+  await page.goto('/reference/api-reference')
+  const app = page.locator('.scalar-app').first()
+  await expect(app.getByText('Create a deployment').first()).toBeAttached({ timeout: 20_000 })
+  const header = await page.getByTestId('docs-header').evaluate((e) => e.getBoundingClientRect().height)
+  expect(header).toBe(56)
+  // Elements that stick to the page. One that sticks inside its own scroll box (a code block's copy button) is
+  // measured against that box, not the page, and is left out.
+  const sticky = () =>
+    app.evaluate((root) => {
+      const toPage = (e: Element) => {
+        for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) {
+          const s = getComputedStyle(a)
+          if (s.overflowX !== 'visible' || s.overflowY !== 'visible') return false
+        }
+        return true
+      }
+      return [root, ...root.querySelectorAll('*')]
+        .filter((e) => getComputedStyle(e).position === 'sticky' && getComputedStyle(e).top !== 'auto' && e.getClientRects().length > 0 && toPage(e))
+        .map((e) => ({ el: String((e as HTMLElement).className).split(' ').slice(0, 2).join('.'), top: parseFloat(getComputedStyle(e).top), at: e.getBoundingClientRect().top }))
+    })
+  const all = await sticky()
+  if (page.viewportSize()!.width >= 1024) {
+    // Scalar's desktop layout: the endpoint list on the left and a code card beside each endpoint
+    expect(all.some((s) => /references-navigation-list/.test(s.el)), JSON.stringify(all)).toBe(true)
+    expect(all.some((s) => /sticky-cards|examples|scalar-card-sticky/.test(s.el)), JSON.stringify(all)).toBe(true)
+  }
+  for (const s of all) expect(s.top, s.el).toBeGreaterThanOrEqual(header)
+  // scrolled into the endpoints, whatever is stuck sits at or below the header's foot, never under it
+  await app.getByText('Get a deployment').locator('visible=true').first().scrollIntoViewIfNeeded()
+  await page.evaluate(() => window.scrollBy(0, 300))
+  const stuck = (await sticky()).filter((s) => Math.abs(s.at - s.top) < 1)
+  if (page.viewportSize()!.width >= 1024) expect(stuck.some((s) => /references-navigation-list/.test(s.el)), JSON.stringify(stuck)).toBe(true)
+  for (const s of stuck) expect(s.at, s.el).toBeGreaterThanOrEqual(header)
+  expect(foreign).toEqual([])
+})
