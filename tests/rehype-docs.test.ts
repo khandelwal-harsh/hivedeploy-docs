@@ -140,6 +140,17 @@ describe('nameTables', () => {
     nameTables(t)
     expect(a.properties!.dataHeading).toBeUndefined()
   })
+  it('numbers tables that would share a label, and leaves a unique one alone', () => {
+    const [a, b, c, d] = [table(), table(), table(), table()]
+    const t = root(h2('ops', 'Operational tasks'), a, p('x'), b, h2('req', 'Required'), c, h2('ops2', 'Operational tasks'), d)
+    nameTables(t)
+    expect([a, b, c, d].map((x) => x.properties!.dataHeading)).toEqual([
+      'Operational tasks (1 of 3)',
+      'Operational tasks (2 of 3)',
+      'Required',
+      'Operational tasks (3 of 3)',
+    ])
+  })
   it('finds a heading inside a step wrapper, and trims and collapses its whitespace', () => {
     const a = table()
     const t = root(h2('s', 'Step 1 — A'), p('x'), a)

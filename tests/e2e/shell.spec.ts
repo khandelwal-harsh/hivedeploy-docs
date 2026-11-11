@@ -147,6 +147,16 @@ test('previous / next tell assistive tech which way they go, and each name holds
   await expect(async () => check()).toPass()
 })
 
+test('a page with one neighbour gets one card, named for its direction', async ({ page }) => {
+  // the last page has only a previous card; Nextra tells the two apart only by the class that pushes "next" right
+  await page.goto('/changelog')
+  await page.waitForLoadState('networkidle')
+  const cards = page.locator('.dx-pn a')
+  await expect(cards).toHaveCount(1)
+  const title = (await cards.textContent())!.trim()
+  await expect(page.locator('.dx-pn').getByRole('link', { name: `Previous: ${title}`, exact: true })).toHaveCount(1)
+})
+
 test('article pages log no warnings or errors', async ({ page }) => {
   const logged: string[] = []
   page.on('console', (m) => {

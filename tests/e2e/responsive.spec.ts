@@ -203,3 +203,98 @@ test('from 768 the article column keeps a gutter from the sidebar and from the r
     await ctx.close()
   }
 })
+
+for (const width of [390, 320])
+  test(`phone ${width}: the open drawer keeps focus between itself and the menu button, the page behind is inert, and every way of closing clears it`, async ({
+    browser,
+  }) => {
+    once()
+    const ctx = await browser.newContext({ viewport: { width, height: 800 } })
+    const page = await ctx.newPage()
+    await page.goto('/quickstart')
+    await page.waitForLoadState('networkidle')
+    const menu = page.getByRole('button', { name: 'Open menu' })
+    const drawer = page.locator('aside.nextra-sidebar-container')
+    const where = () =>
+      page.evaluate(() => {
+        const a = document.activeElement
+        if (!a || a === document.body) return 'body'
+        if (a.closest('aside.nextra-sidebar-container')) return 'drawer'
+        if (a.matches('.dx-hdr .menu-btn')) return 'menu'
+        if (a.closest('article')) return 'article'
+        if (a.closest('footer')) return 'footer'
+        if (a.closest('header')) return `header: ${a.textContent!.trim() || a.getAttribute('aria-label')}`
+        return a.tagName
+      })
+    const inert = () => page.evaluate(() => document.querySelectorAll('[inert]').length)
+    expect(await inert()).toBe(0)
+
+    await menu.click()
+    await expect(menu).toHaveAttribute('aria-expanded', 'true')
+    // the article, the footer and every header control but the menu button are out of reach; the drawer, its scrim,
+    // the menu button and the search palette are not
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          ['article.nextra-content', 'footer.dx-footer', '.dx-skip', '.dx-hdr .brand', '.dx-hdr .hdr-s', '.dx-hdr .nav-cta'].map(
+            (s) => !!document.querySelector(s)?.closest('[inert]'),
+          ),
+        ),
+      )
+      .toEqual([true, true, true, true, true, true])
+    expect(
+      await page.evaluate(() =>
+        ['.dx-hdr .menu-btn', 'aside.nextra-sidebar-container', 'dialog.dx-modal'].map((s) => !!document.querySelector(s)!.closest('[inert]')),
+      ),
+    ).toEqual([false, false, false])
+    expect(await page.evaluate(() => !!document.querySelector('aside.nextra-sidebar-container')!.previousElementSibling!.closest('[inert]'))).toBe(false)
+
+    // Tab past the drawer's last stop and around again: focus is only ever in the drawer or on the menu button
+    const stops = await drawer.evaluate(
+      (d) =>
+        Array.from(d.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, [tabindex]')).filter(
+          (e) => e.tabIndex >= 0 && e.getClientRects().length > 0,
+        ).length,
+    )
+    const seen = new Set<string>()
+    for (let i = 0; i < Math.max(40, stops + 5); i++) {
+      await page.keyboard.press('Tab')
+      const w = await where()
+      seen.add(w)
+      expect(['drawer', 'menu'], `Tab ${i}`).toContain(w)
+    }
+    expect([...seen].sort()).toEqual(['drawer', 'menu'])
+    await menu.focus()
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('Shift+Tab')
+      expect(['drawer', 'menu'], `Shift+Tab ${i}`).toContain(await where())
+    }
+
+    // every way of closing leaves nothing inert: Esc, the menu button, the scrim, a link (a route change)
+    await page.keyboard.press('Escape')
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await expect.poll(inert).toBe(0)
+    await menu.click()
+    await expect.poll(inert).toBeGreaterThan(0)
+    await menu.click()
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await expect.poll(inert).toBe(0)
+    await menu.click()
+    await expect.poll(inert).toBeGreaterThan(0)
+    await page.mouse.click(width - 8, 500)
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await expect.poll(inert).toBe(0)
+    await menu.click()
+    await expect.poll(inert).toBeGreaterThan(0)
+    await drawer.getByRole('link', { name: 'Architecture', exact: true }).click()
+    await expect(page).toHaveURL(/\/concepts\/architecture$/)
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await expect.poll(inert).toBe(0)
+    // widening past the phone layout hides the menu button, so an open drawer closes and leaves nothing inert
+    await menu.click()
+    await expect.poll(inert).toBeGreaterThan(0)
+    await page.setViewportSize({ width: 1024, height: 800 })
+    await expect(page.locator('.dx-hdr .menu-btn')).toHaveAttribute('aria-expanded', 'false') // hidden now, so not by role
+    await expect.poll(inert).toBe(0)
+    await ctx.close()
+  })

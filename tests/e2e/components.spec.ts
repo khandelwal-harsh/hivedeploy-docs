@@ -124,20 +124,28 @@ test('the step number is decoration: its content carries an empty alt', async ({
   expect(c).toMatch(/"01"/)
 })
 
-test('each table region is named from the heading before it', async ({ page }) => {
-  for (const path of ['/reference/env-vars', '/connect-clouds/aws', '/reference/agents-list']) {
+test('each table region is named from the heading before it; tables that would share a name are numbered', async ({ page }) => {
+  for (const path of ['/reference/env-vars', '/connect-clouds/aws', '/reference/agents-list', '/use-the-agents/postgres']) {
     await page.goto(path)
-    const r = await page.locator('article .dx-table').evaluateAll((bs) =>
-      bs.map((b) => {
-        let near = ''
+    const r = await page.locator('article .dx-table').evaluateAll((bs) => {
+      const near = bs.map((b) => {
+        let t = ''
         for (const h of document.querySelectorAll('article :is(h2, h3, h4, h5, h6)'))
-          if (h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) near = h.textContent!.trim()
-        return { got: b.getAttribute('aria-label'), want: near ? `Table: ${near}` : 'Table' }
-      }),
-    )
+          if (h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) t = h.textContent!.trim()
+        return t
+      })
+      return bs.map((b, i) => {
+        const same = near.filter((t) => t && t === near[i]).length
+        const nth = near.slice(0, i + 1).filter((t) => t === near[i]).length
+        return { got: b.getAttribute('aria-label'), want: !near[i] ? 'Table' : same > 1 ? `Table: ${near[i]} (${nth} of ${same})` : `Table: ${near[i]}` }
+      })
+    })
     expect(r.length, path).toBeGreaterThan(0)
     for (const { got, want } of r) expect(got, path).toBe(want)
+    expect(new Set(r.map((x) => x.got)).size, `${path}: names are unique`).toBe(r.length)
   }
+  await expect(page.getByRole('region', { name: 'Table: Operational tasks (1 of 2)', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('region', { name: 'Table: Operational tasks (2 of 2)', exact: true })).toHaveCount(1)
   await page.goto('/reference/env-vars')
   await expect(page.getByRole('region', { name: 'Table: Required', exact: true })).toHaveCount(1)
 })
