@@ -14,6 +14,7 @@ import { PageHead } from './components/chrome/PageHead'
 import { MobileToc, Toc, TocWrapper } from './components/chrome/Toc'
 import { headings } from './components/Heading'
 import { CodeBlock } from './components/mdx/CodeBlock'
+import { DocsTable } from './components/mdx/DocsTable'
 
 function Head() {
   const router = useRouter()
@@ -96,6 +97,7 @@ const config: DocsThemeConfig = {
   components: {
     ...headings,
     pre: CodeBlock as FC,
+    table: DocsTable as FC,
     wrapper: TocWrapper as FC,
     Callout: Callout as FC,
     DiataxisBadge: DiataxisBadge as FC,

@@ -1,5 +1,6 @@
 import nextra from 'nextra'
 import { obsidian } from './lib/shiki-obsidian.mjs'
+import { rehypeDocs } from './lib/rehype-docs.mjs'
 
 const withNextra = nextra({
   theme: 'nextra-theme-docs',
@@ -8,7 +9,10 @@ const withNextra = nextra({
     codeblocks: true,
   },
   defaultShowCopyCode: true,
-  mdxOptions: { rehypePrettyCodeOptions: { theme: { light: obsidian, dark: obsidian } } },
+  mdxOptions: {
+    rehypePlugins: [rehypeDocs],
+    rehypePrettyCodeOptions: { theme: { light: obsidian, dark: obsidian } },
+  },
 })
 
 const isProd = process.env.NODE_ENV === 'production'

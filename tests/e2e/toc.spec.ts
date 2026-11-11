@@ -147,8 +147,8 @@ test('ids are unique in the document', async ({ page }) => {
     const seen = new Map<string, number>()
     document.querySelectorAll('[id]').forEach((e) => seen.set(e.id, (seen.get(e.id) ?? 0) + 1))
     const testids = new Map<string, number>()
-    // test ids name a kind of thing; "code-block" legitimately repeats
-    document.querySelectorAll('[data-testid]:not([data-testid="code-block"])').forEach((e) => testids.set(e.getAttribute('data-testid')!, (testids.get(e.getAttribute('data-testid')!) ?? 0) + 1))
+    // test ids name a kind of thing; "code-block" and "callout" legitimately repeat
+    document.querySelectorAll('[data-testid]:not([data-testid="code-block"]):not([data-testid="callout"])').forEach((e) => testids.set(e.getAttribute('data-testid')!, (testids.get(e.getAttribute('data-testid')!) ?? 0) + 1))
     return [...seen, ...testids].filter(([, n]) => n > 1).map(([k]) => k)
   })
   expect(dup).toEqual([])

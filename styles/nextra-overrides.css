@@ -60,10 +60,6 @@ article.nextra-content > main { padding-top: 24px; font-size: 16px; line-height:
 .nextra-content code:not(pre code) { background: var(--glass) !important; border: 1px solid var(--line) !important; border-radius: 6px; padding: 1px 5px; font-size: 13.5px; }
 /* code blocks: see components.css (.dx-code) */
 
-/* tables: Task 7 restyles these */
-.nextra-content table { border: 1px solid var(--line) !important; }
-.nextra-content th { background: var(--raised) !important; font-family: var(--font-mono) !important; color: var(--text-strong) !important; }
-.nextra-content td { border-top: 1px solid var(--line) !important; }
 
 /* links in prose: accent text, accent-edge underline (the collapsed contents list is not prose) */
 .nextra-content :is(p, li, td, th, blockquote, dd, summary) a:not(.subheading-anchor):not(.dx-mtoc a) {

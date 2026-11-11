@@ -164,6 +164,8 @@
 .dx-copy.done svg:first-child { display: none; }
 .dx-copy.done .ok { display: block; }
 .dx-code pre { margin: 0 !important; padding: 14px 18px 16px !important; overflow-x: auto; white-space: pre; background: var(--code-bg) !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.62; color: var(--text); -webkit-text-size-adjust: 100%; }
+/* the block clips its corners (overflow: hidden), so the ring sits inside the pre, not outside it */
+.dx-code pre:focus-visible { outline-offset: -2px; }
 .dx-code-head.bare + pre { padding-right: 48px !important; }
 .dx-code pre code { display: block; width: max-content; min-width: 100%; background: transparent !important; border: 0 !important; padding: 0 !important; border-radius: 0; font: inherit; font-size: inherit; white-space: pre; color: inherit; }
 /* Shiki is given one theme for both modes; its light/dark pairs resolve to the same hue. */
@@ -178,4 +180,52 @@
   .dx-code-head.bare { height: 34px; padding: 0 8px; }
   .dx-code-head.bare .dx-copy { position: static; }
   .dx-code-head.bare + pre { padding-right: 18px !important; padding-top: 4px !important; }
+}
+
+/* ---------- callouts (components/Callout.tsx) ---------- */
+.dx-callout { margin: 22px 0 26px; padding: 16px 18px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--glass); font-size: 15px; line-height: 1.65; color: var(--text); }
+.dx-callout-label { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; line-height: 1.4; letter-spacing: .14em; text-transform: uppercase; color: var(--text-strong); margin-bottom: 8px; }
+.dx-callout-label .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--note); box-shadow: 0 0 0 3px rgba(255,255,255,.08); }
+.dx-callout-label .glyph { font-style: normal; font-size: 12px; line-height: 1; letter-spacing: 0; }
+.dx-callout.warning { border-color: var(--warn-edge); background: linear-gradient(180deg, var(--warn-soft), rgba(255,138,61,.03)); }
+.dx-callout.warning .dx-callout-label { color: var(--warn); }
+.dx-callout.error { border-color: var(--fail-edge); background: linear-gradient(180deg, var(--fail-soft), rgba(251,113,133,.03)); }
+.dx-callout.error .glyph { color: var(--fail); }
+.dx-callout.success { border-color: var(--ok-edge); background: linear-gradient(180deg, var(--ok-soft), rgba(52,211,153,.03)); }
+.dx-callout.success .glyph { color: var(--ok); }
+.dx-callout-body > * { margin-top: 0 !important; }
+.dx-callout-body > p { margin-bottom: 12px !important; font-size: 15px; line-height: 1.65; }
+.dx-callout-body > :last-child { margin-bottom: 0 !important; }
+
+/* ---------- tables (components/mdx/DocsTable.tsx) ---------- */
+.dx-table { margin: 20px 0 26px; border: 1px solid var(--line); border-radius: 16px; overflow-x: auto; background: var(--glass); }
+.dx-table table { width: 100%; margin: 0 !important; border: 0 !important; border-collapse: collapse; font-size: 14px; line-height: 1.55; }
+.dx-table tr { background: transparent !important; border: 0 !important; }
+.dx-table th { text-align: left; font-family: var(--font-mono) !important; font-size: 11px; line-height: 1.5; letter-spacing: .1em; text-transform: uppercase; font-weight: 500 !important; color: var(--text-muted) !important; padding: 11px 14px !important; background: var(--band) !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; white-space: nowrap; }
+.dx-table td { padding: 11px 14px !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; vertical-align: top; color: var(--text); }
+.dx-table tr:last-child td { border-bottom: 0 !important; }
+.dx-table tbody tr:hover { background: rgba(255,255,255,.02) !important; }
+
+/* ---------- quotes ---------- */
+.dx-quote { margin: 18px 0 22px; padding: 14px 18px 2px; border-radius: 12px; border: 1px solid var(--line) !important; background: transparent; color: var(--text) !important; font-style: normal !important; }
+.dx-quote p { font-size: 15px; line-height: 1.65; color: var(--text); margin: 0 0 12px !important; }
+.dx-quote.agent { position: relative; padding: 16px 20px 4px 54px; background: var(--glass); border-color: var(--line-strong) !important; border-radius: 4px 14px 14px 14px; }
+.dx-quote.agent::before { content: ''; position: absolute; left: 16px; top: 16px; width: 24px; height: 24px; border-radius: 7px; background: var(--raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M32 19 46.72 27.5V44.5L32 53 17.28 44.5V27.5Z' fill='none' stroke='%23777' stroke-width='6'/%3E%3Cpath d='M68 19 82.72 27.5V44.5L68 53 53.28 44.5V27.5Z' fill='%23999'/%3E%3Cpath d='M50 50 64.72 58.5V75.5L50 84 35.28 75.5V58.5Z' fill='none' stroke='%23777' stroke-width='6'/%3E%3C/svg%3E") center/16px no-repeat; border: 1px solid var(--line); }
+.dx-quote.agent em { font-style: normal; color: var(--text-strong); }
+
+/* ---------- steps (lib/rehype-docs.mjs wraps "Step N —" sections) ---------- */
+.dx-step { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 14px; margin-left: -58px; }
+.dx-step > * { grid-column: 2; min-width: 0; }
+.dx-step::before { content: attr(data-step); grid-column: 1; grid-row: 1; justify-self: start; align-self: start; position: relative; z-index: 1; width: 30px; height: 30px; margin-top: 40px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--bg); display: grid; place-items: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-strong); }
+.dx-step::after { content: ''; position: absolute; left: 15px; top: 74px; bottom: -48px; width: 1px; background: linear-gradient(var(--line-strong), var(--line) 80%, transparent); }
+.dx-step:has(+ :not(.dx-step))::after { bottom: 0; }
+.dx-step > h2 { margin-top: 42px; }
+@media (max-width: 767px) {
+  .dx-step { margin-left: 0; grid-template-columns: 1fr; }
+  .dx-step > * { grid-column: 1; }
+  .dx-step::before { grid-row: auto; margin: 44px 0 -30px; }
+  .dx-step::after { display: none; }
+  /* a phone scrolls the table sideways rather than squeezing the last column to a sliver */
+  .dx-table table { min-width: 560px; }
+  .dx-table { margin-left: -16px; margin-right: -16px; border-radius: 0; border-left: 0; border-right: 0; }
 }
