@@ -103,8 +103,8 @@ test('exactly the first card is lit', async ({ page }) => {
   expect(lit[0]).toBe(true)
 })
 
-for (const width of [1024, 768]) {
-  test(`at ${width} Start here, How-to and Troubleshooting carry their label in flow under the heading, the rule beneath`, async ({ page }) => {
+for (const width of [1440, 1024]) {
+  test(`at ${width} Start here, How-to and Troubleshooting carry their label on the heading's row, at the right, over one rule`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
     for (const n of [1, 2, 5]) {
@@ -112,17 +112,37 @@ for (const width of [1024, 768]) {
         const h2 = body.querySelectorAll(':scope > h2')[n - 1] as HTMLElement
         const sec = body.querySelectorAll(':scope > .dx-hsec')[n - 1] as HTMLElement
         const cols = sec.querySelector('.cols') as HTMLElement
-        return { pos: getComputedStyle(cols).position, top: getComputedStyle(cols).top, h2Bottom: h2.getBoundingClientRect().bottom, label: cols.getBoundingClientRect(), rule: cols.getBoundingClientRect().bottom + parseFloat(getComputedStyle(cols).borderBottomWidth) * 0, list: sec.querySelector('.dx-hgrid')!.getBoundingClientRect().top, h2Border: getComputedStyle(h2).borderBottomWidth, colsBorder: getComputedStyle(cols).borderBottomWidth }
+        const hs = h2.getBoundingClientRect()
+        const c = cols.getBoundingClientRect()
+        const kids = [...sec.children].map((k) => k.className)
+        return { pos: getComputedStyle(cols).position, top: getComputedStyle(cols).top, secRight: sec.getBoundingClientRect().right, bodyRight: body.getBoundingClientRect().right - parseFloat(getComputedStyle(body).paddingRight), colsRight: c.right, colsBottom: c.bottom, h2Bottom: hs.bottom - parseFloat(getComputedStyle(h2).paddingBottom) - parseFloat(getComputedStyle(h2).borderBottomWidth), rule: hs.bottom, list: sec.querySelector('.dx-hgrid')!.getBoundingClientRect().top, colsBorder: getComputedStyle(cols).borderBottomWidth, h2Border: getComputedStyle(h2).borderBottomWidth, kids }
       }, n)
       expect(r.pos, `section ${n}`).toBe('static')
       expect(r.top, `section ${n}`).toBe('auto')
-      expect(r.label.top, `section ${n}`).toBeGreaterThanOrEqual(r.h2Bottom - 1)
+      expect(Math.abs(r.colsRight - r.bodyRight), `section ${n} right edge`).toBeLessThanOrEqual(1)
+      expect(Math.abs(r.colsBottom - r.h2Bottom), `section ${n} bottom`).toBeLessThanOrEqual(2)
+      expect(r.colsBottom, `section ${n}`).toBeLessThanOrEqual(r.rule)
       expect(r.rule, `section ${n}`).toBeLessThanOrEqual(r.list)
-      expect(r.colsBorder, `section ${n}`).toBe('1px')
-      expect(r.h2Border, `section ${n}`).toBe('0px')
+      expect(r.h2Border, `section ${n}`).toBe('1px')
+      expect(r.colsBorder, `section ${n}`).toBe('0px')
     }
   })
 }
+
+test('at 390 the labels sit in flow under their heading and its rule', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  for (const n of [1, 2, 5]) {
+    const r = await page.locator('.dx-homebody').evaluate((body, n) => {
+      const h2 = body.querySelectorAll(':scope > h2')[n - 1] as HTMLElement
+      const sec = body.querySelectorAll(':scope > .dx-hsec')[n - 1] as HTMLElement
+      const cols = sec.querySelector('.cols') as HTMLElement
+      return { h2Bottom: h2.getBoundingClientRect().bottom, label: cols.getBoundingClientRect().top, pos: getComputedStyle(cols).position }
+    }, n)
+    expect(r.label, `section ${n}`).toBeGreaterThanOrEqual(r.h2Bottom - 1)
+    expect(r.pos, `section ${n}`).toBe('static')
+  }
+})
 
 for (const width of [1024, 900, 768]) {
   test(`at ${width} the Reference and Explanation labels and rules line up, wrapped heading or not`, async ({ page }) => {

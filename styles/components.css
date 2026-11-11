@@ -296,8 +296,21 @@ article.nextra-content > .dx-home { width: 100%; min-width: 0; }
 .dx-hsec .cols { position: static; display: block; margin: 0 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); line-height: 16px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
 
 /* rows by position: 1 h2, 2 block | 3 h2, 4 block | 5 + 6 side by side | 7 h2, 8 block | 9 hr | 10 + 11 three across */
-/* Every section label sits in flow under its h2 and carries the rule; no fixed offsets. */
-.dx-homebody > h2:nth-of-type(-n+5) { margin-bottom: 0; padding-bottom: 8px; border-bottom: 0; }
+/* Reference and Explanation: the label sits in flow under the h2 and carries the rule. Below 768 every label sits in flow under its h2's rule (the media block further down). */
+.dx-homebody > h2:nth-of-type(3), .dx-homebody > h2:nth-of-type(4) { margin-bottom: 0; padding-bottom: 8px; border-bottom: 0; }
+/* Start here, How-to, Troubleshooting from 768: the label shares the h2's grid row, right-aligned and bottom-aligned to the
+   heading's last line, with the h2's own rule under both. .dx-hsec dissolves so its label and cards are grid items of the body. */
+@media (min-width: 768px) {
+  .dx-homebody > .dx-hsec:is(:nth-of-type(1), :nth-of-type(2), :nth-of-type(5)) { display: contents; }
+  .dx-hsec:is(:nth-of-type(1), :nth-of-type(2), :nth-of-type(5)) > .cols { grid-column: 1 / -1; justify-self: end; align-self: end; margin: 0 0 35px; padding: 0; border: 0; line-height: 32px; }  /* 35 = the h2's 20 margin + 14 padding + 1 rule */
+  .dx-hsec:is(:nth-of-type(1), :nth-of-type(2), :nth-of-type(5)) > .dx-hgrid { grid-column: 1 / -1; min-width: 0; align-self: start; }
+  .dx-hsec:nth-of-type(1) > .cols { grid-row: 1; }
+  .dx-hsec:nth-of-type(1) > .dx-hgrid { grid-row: 2; }
+  .dx-hsec:nth-of-type(2) > .cols { grid-row: 3; }
+  .dx-hsec:nth-of-type(2) > .dx-hgrid { grid-row: 4; }
+  .dx-hsec:nth-of-type(5) > .cols { grid-row: 7; }
+  .dx-hsec:nth-of-type(5) > .dx-hgrid { grid-row: 8; }
+}
 .dx-homebody > h2:nth-of-type(1) { grid-row: 1; }
 .dx-homebody > .dx-hsec:nth-of-type(1) { grid-row: 2; }
 .dx-homebody > h2:nth-of-type(2) { grid-row: 3; }
@@ -385,12 +398,12 @@ article.nextra-content > .dx-home { width: 100%; min-width: 0; }
 @media (min-width: 1024px) {
   article.nextra-content > main:has(.dx-cl-entry) { max-width: 900px; }
 }
-.dx-cl-entry { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 36px 0 28px; border-top: 1px solid var(--line); position: relative; }
+.dx-cl-entry { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 40px 0; border-top: 1px solid var(--line); position: relative; }
 .dx-cl-entry > * { min-width: 0; }
-.dx-cl-date { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; line-height: 20px; color: var(--text-strong); }
+.dx-cl-date { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-family: var(--font-mono); font-size: 13px; line-height: 20px; color: var(--text-strong); }
 .dx-cl-date::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--accent); background: var(--bg); }
 .dx-cl-entry.first .dx-cl-date::before { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-.dx-cl-entry > h2 { margin: 0 0 6px; }
+.dx-cl-entry > h2 { margin: 0 0 14px; }
 .dx-cl-entry > :is(p, ul, ol, h3, pre, blockquote):last-child { margin-bottom: 0; }
 .dx-kind { margin: 18px 0 6px !important; font-family: var(--font-mono); font-size: 11px !important; line-height: 16px !important; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
 .dx-kind strong { color: inherit !important; font-weight: 500 !important; }
