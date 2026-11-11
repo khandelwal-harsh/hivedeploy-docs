@@ -30,7 +30,7 @@ test('every link on all 39 pages resolves', async ({ page, request, baseURL }, t
   test.skip(testInfo.project.name !== 'desktop', 'links are checked once, on desktop')
   test.setTimeout(300_000)
   const sitemap = await (await request.get('/sitemap-0.xml')).text()
-  const paths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname)
+  const paths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname)
   expect(paths).toHaveLength(39)
 
   const links = new Map<string, Found[]>()
