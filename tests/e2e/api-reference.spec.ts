@@ -104,3 +104,32 @@ test('the page head clears the header like /quickstart does', async ({ page }) =
   const qs = await page.locator('.nextra-breadcrumb').first().evaluate((e) => e.getBoundingClientRect().top)
   expect(Math.abs(ref.head - qs)).toBeLessThanOrEqual(4 + 0)
 })
+
+test("the border reset does not flatten Scalar's coloured border utilities", async ({ page }) => {
+  await page.goto('/reference/api-reference')
+  const app = page.locator('.scalar-app').first()
+  await app.waitFor()
+  const r = await app.evaluate((e) => {
+    const mk = (cls: string, css: string) => {
+      const d = document.createElement('div')
+      d.className = cls
+      d.style.cssText = css
+      e.appendChild(d)
+      const c = getComputedStyle(d)
+      const out = c.borderTopColor === '' ? '' : c.borderTopColor, color = c.color
+      d.remove()
+      return { out, color }
+    }
+    return {
+      red: mk('border-1 border-red', ''),
+      c3: mk('border-1 border-c-3', ''),
+      wantRed: mk('', 'color: var(--scalar-color-red)').color,
+      wantC3: mk('', 'color: var(--scalar-color-3)').color,
+      line: mk('', 'color: var(--scalar-border-color)').color,
+    }
+  })
+  expect(r.red.out).not.toBe(r.line)
+  expect(r.c3.out).not.toBe(r.line)
+  expect(r.red.out).toBe(r.wantRed)
+  expect(r.c3.out).toBe(r.wantC3)
+})

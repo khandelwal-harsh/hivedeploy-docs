@@ -28,5 +28,5 @@
   --scalar-radius-xl: 16px;
 }
 
-/* The site's preflight sets `* { border-color }`, which beats Scalar's own `:where()` reset. */
-.scalar-app * { border-color: var(--scalar-border-color); }
+/* The site's preflight sets `* { border-color }`, which beats Scalar's own `:where()` reset. Zero specificity here, so Scalar's border-red / border-c-3 utilities still win. */
+:where(.scalar-app) *, :where(.scalar-app) *::before, :where(.scalar-app) *::after { border-color: var(--scalar-border-color); }
