@@ -13,6 +13,7 @@ import { SearchTrigger } from './components/chrome/SearchTrigger'
 import { PageHead } from './components/chrome/PageHead'
 import { MobileToc, Toc, TocWrapper } from './components/chrome/Toc'
 import { headings } from './components/Heading'
+import { HomeHero } from './components/home/HomeHero'
 import { CodeBlock } from './components/mdx/CodeBlock'
 import { DocsTable } from './components/mdx/DocsTable'
 
@@ -59,7 +60,14 @@ function Main({ children }: { children: ReactNode }) {
     side?.querySelectorAll('a[aria-current="page"]').forEach((a) => a.removeAttribute('aria-current'))
     side?.querySelectorAll('li.active > a').forEach((a) => a.setAttribute('aria-current', 'page'))
   }, [asPath])
-  if (pathname === '/') return <>{children}</>
+  if (pathname === '/') {
+    return (
+      <div className="dx-home">
+        <HomeHero />
+        <div className="dx-homebody">{children}</div>
+      </div>
+    )
+  }
   const parts = isValidElement<{ children?: ReactNode }>(children) ? children.props.children : undefined
   const raw = Array.isArray(parts) && parts.length === 5 ? (parts as ReactNode[]) : null
   if (!raw) {

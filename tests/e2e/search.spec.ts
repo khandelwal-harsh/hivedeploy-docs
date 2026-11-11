@@ -95,3 +95,17 @@ test('the index Nextra builds is where the palette reads it', async ({ request }
   expect(r.status()).toBe(200)
   expect(Object.keys(await r.json())).toContain('/quickstart')
 })
+
+test('the in-row close button\'s name holds its visible text (WCAG 2.5.3); results never animate (D12)', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 768)
+  await page.goto('/quickstart')
+  await page.waitForLoadState('networkidle')
+  await page.keyboard.press('ControlOrMeta+k')
+  const dlg = page.getByTestId('search-palette')
+  const close = dlg.locator('button.kbd')
+  const visible = ((await close.innerText()) ?? '').trim().toLowerCase()
+  expect(((await close.getAttribute('aria-label')) ?? '').toLowerCase()).toContain(visible)
+  await page.keyboard.type('external ID')
+  await expect(dlg.getByRole('option').first()).toBeVisible()
+  expect(await dlg.locator('.dx-hit').first().evaluate((e) => getComputedStyle(e).transitionDuration)).toMatch(/^0s(, 0s)*$/)
+})

@@ -1,5 +1,8 @@
 export default {
-  index: 'Welcome',
+  index: {
+    title: 'Welcome',
+    theme: { layout: 'full', sidebar: false, toc: false, breadcrumb: false, pagination: false, timestamp: false },
+  },
   quickstart: 'Quickstart',
   concepts: 'Concepts',
   'connect-clouds': 'Connect a cloud',

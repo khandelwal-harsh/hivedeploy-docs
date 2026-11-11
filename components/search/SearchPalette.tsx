@@ -157,7 +157,7 @@ export function SearchPalette() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button type="button" className="kbd" aria-label="Close search" onClick={() => closeSearch()}>
+        <button type="button" className="kbd" aria-label="esc, close search" onClick={() => closeSearch()}>
           esc
         </button>
       </div>

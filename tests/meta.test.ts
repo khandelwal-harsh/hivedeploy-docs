@@ -5,6 +5,12 @@ describe('root _meta', () => {
   it('lists the eight sections, Changelog, a separator and the two property links, in order', () => {
     expect(Object.keys(meta)).toEqual(['index', 'quickstart', 'concepts', 'connect-clouds', 'guides', 'use-the-agents', 'reference', 'troubleshooting', 'changelog', '-- links', 'proof', 'www'])
   })
+  it('turns the home into a full-layout page with nothing around it', () => {
+    expect((meta as Record<string, unknown>)['index']).toEqual({
+      title: 'Welcome',
+      theme: { layout: 'full', sidebar: false, toc: false, breadcrumb: false, pagination: false, timestamp: false },
+    })
+  })
   it('titles Changelog and points the links at the properties', () => {
     const m = meta as Record<string, unknown>
     expect(m['changelog']).toBe('Changelog')
