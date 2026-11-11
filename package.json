@@ -17,6 +17,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:redesign-guard": "vitest run --config vitest.redesign-guard.config.ts",
     "test:watch": "vitest",
     "e2e:serve": "OPENAPI_SOURCE_URL=file://$PWD/public/openapi.example.json pnpm build && next start -p 3320",
     "e2e": "playwright test"

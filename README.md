@@ -24,6 +24,7 @@ pnpm dev          # http://localhost:3000
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | TypeScript check |
 | `pnpm test` | Vitest run |
+| `pnpm test:redesign-guard` | The docs-v2 redesign's content guard (MDX and build scripts unchanged from base 95cfb46). Run before merging `feat/docs-v2`; delete after the merge |
 | `pnpm test:watch` | Vitest watch mode |
 | `pnpm e2e` | Playwright end-to-end tests (builds against the stub OpenAPI file and serves on :3320) |
 
