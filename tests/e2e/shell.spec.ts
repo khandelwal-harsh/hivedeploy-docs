@@ -98,18 +98,17 @@ test('no faint text inside an article', async ({ page }) => {
 test('article headings, links and inline code follow the brief', async ({ page }) => {
   test.skip(page.viewportSize()!.width < 768)
   await page.goto('/connect-clouds/aws')
-  const h2 = await page.locator('article h2').first().evaluate((e) => {
-    const c = getComputedStyle(e)
-    return [c.fontSize, c.color, c.scrollMarginTop]
-  })
-  expect(h2).toEqual(['26px', 'rgb(245, 245, 242)', '80px'])
-  const h3 = await page.locator('article h3').first().evaluate((e) => [getComputedStyle(e).fontSize, getComputedStyle(e).scrollMarginTop])
-  expect(h3).toEqual(['19px', '80px'])
-  const link = await page.locator('article p a').first().evaluate((e) => {
-    const c = getComputedStyle(e)
-    return [c.color, c.textUnderlineOffset]
-  })
-  expect(link).toEqual(['rgb(247, 194, 68)', '3px'])
+  // The article node is replaced once just after load, so read through a poll, not a single evaluate.
+  const read = (sel: string, props: string[]) =>
+    page.evaluate(([s, ps]) => {
+      const e = document.querySelector(s!)
+      if (!e || !e.isConnected) return []
+      const c = getComputedStyle(e)
+      return (ps as string[]).map((p) => c.getPropertyValue(p))
+    }, [sel, props] as const)
+  await expect.poll(() => read('article h2', ['font-size', 'color', 'scroll-margin-top'])).toEqual(['26px', 'rgb(245, 245, 242)', '80px'])
+  await expect.poll(() => read('article h3', ['font-size', 'scroll-margin-top'])).toEqual(['19px', '80px'])
+  await expect.poll(() => read('article p a', ['color', 'text-underline-offset'])).toEqual(['rgb(247, 194, 68)', '3px'])
 })
 
 test('feedback widget and previous/next are at the foot', async ({ page }) => {

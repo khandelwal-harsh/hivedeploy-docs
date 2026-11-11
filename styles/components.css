@@ -100,3 +100,37 @@
   .dx-meta { border-bottom: 0; margin-bottom: 0; padding-bottom: 14px; }
   .dx-fb .upd { margin-left: 0; width: 100%; }
 }
+
+/* Contents rail. Nextra's own <nav class="nextra-toc"> is the 232 px column from 1280 px up; the
+   aside inside it is sticky under the header. The Honey segment moves instantly (state feedback,
+   not decoration), so nothing in here transitions except the hover colour. */
+.nextra-toc { width: 232px; }
+.dx-toc { position: sticky; top: var(--header-h); max-height: calc(100vh - var(--header-h)); overflow-y: auto; padding: 40px 20px 32px 8px; }
+.dx-toc .label { display: block; font-size: 11px; margin-bottom: 14px; }
+.dx-toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+.dx-toc li a { position: relative; display: block; padding: 5px 0 5px 14px; font-size: 13px; line-height: 1.4; color: var(--text-muted); overflow-wrap: anywhere; }
+.dx-toc li.l3 a { padding-left: 26px; font-size: 12.5px; }
+.dx-toc li a::before { content: ''; position: absolute; left: -1px; top: 5px; bottom: 5px; width: 2px; border-radius: 2px; background: var(--accent); transform: scaleY(0); }
+.dx-toc li a:hover, .dx-toc li a.on { color: var(--text-strong); }
+.dx-toc li a.on::before { transform: scaleY(1); }
+.dx-toc-foot { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 9px; }
+.dx-toc-foot a { font-size: 12.5px; color: var(--text-muted); }
+.dx-toc-foot a:hover { color: var(--text-strong); }
+
+.dx-mtoc { display: none; }
+@media (max-width: 1279px) {
+  div:has(> .nextra-toc) { flex-wrap: wrap; }
+  .nextra-toc { display: block !important; order: -1; width: 100%; }
+  .dx-toc { display: none; }
+  .dx-mtoc { display: block; margin: 0; padding: 12px 24px 0; }
+  .dx-mtoc summary { cursor: pointer; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--glass); color: var(--text-strong); font-size: 14px; font-weight: 500; }
+  .dx-mtoc ol { list-style: none; margin: 12px 0 0; padding: 0; border-left: 1px solid var(--line); }
+  .dx-mtoc li a { position: relative; display: block; padding: 6px 0 6px 14px; font-size: 14px; line-height: 1.4; color: var(--text-muted); }
+  .dx-mtoc li.l3 a { padding-left: 26px; }
+  .dx-mtoc li a::before { content: ''; position: absolute; left: -1px; top: 5px; bottom: 5px; width: 2px; border-radius: 2px; background: var(--accent); transform: scaleY(0); }
+  .dx-mtoc li a.on { color: var(--text-strong); }
+  .dx-mtoc li a.on::before { transform: scaleY(1); }
+}
+@media (min-width: 768px) and (max-width: 1279px) {
+  .dx-mtoc { padding-left: 48px; padding-right: 48px; }
+}

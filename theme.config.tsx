@@ -11,6 +11,7 @@ import { DocsHeader } from './components/chrome/DocsHeader'
 import { SiteFooter } from './components/chrome/SiteFooter'
 import { SearchTrigger } from './components/chrome/SearchTrigger'
 import { PageHead } from './components/chrome/PageHead'
+import { Toc } from './components/chrome/Toc'
 
 function Head() {
   const router = useRouter()
@@ -93,6 +94,7 @@ const config: DocsThemeConfig = {
     DiataxisBadge: DiataxisBadge as FC,
     ScalarReference: ScalarReference as FC,
   },
+  toc: { component: Toc as FC, float: true },
   gitTimestamp: null,
   main: Main as FC<{ children: ReactNode }>,
   darkMode: false,
