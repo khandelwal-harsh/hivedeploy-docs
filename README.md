@@ -25,6 +25,7 @@ pnpm dev          # http://localhost:3000
 | `pnpm typecheck` | TypeScript check |
 | `pnpm test` | Vitest run |
 | `pnpm test:watch` | Vitest watch mode |
+| `pnpm e2e` | Playwright end-to-end tests (builds against the stub OpenAPI file and serves on :3320) |
 
 ## Adding a new page
 

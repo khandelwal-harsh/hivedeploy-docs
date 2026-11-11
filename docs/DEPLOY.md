@@ -84,6 +84,10 @@ After the live deploy succeeds:
 - [ ] `/api/og?title=Test&section=concepts` returns a 1200×630 PNG with the Hivedeploy template
 - [ ] Vercel Analytics dashboard shows at least one page view
 
+## Content-Security-Policy
+
+The CSP in `next.config.mjs` no longer lists Google Fonts: fonts are self-hosted (`font-src 'self'`), so there is nothing to allow-list.
+
 ## Rotating the Slack webhook
 
 If you regenerate the webhook URL in Slack:
