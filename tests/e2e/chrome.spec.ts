@@ -75,3 +75,16 @@ test("phone: the menu button opens Nextra's drawer with the search trigger and t
   await expect(page.locator('.nextra-sidebar-container').getByRole('link', { name: 'Postgres', exact: true })).toBeVisible()
   await expect(page.locator('.nextra-sidebar-container').getByTestId('search-trigger')).toBeVisible()
 })
+
+test('chrome link colours survive the reset', async ({ page }) => {
+  test.skip(page.viewportSize()!.width < 1024)
+  await page.goto('/quickstart')
+  const h = page.getByTestId('docs-header')
+  const css = (l: ReturnType<typeof h.locator>, prop: 'color' | 'backgroundColor') => l.evaluate((e, p) => getComputedStyle(e)[p as 'color'], prop)
+  expect(await css(h.locator('a.brand'), 'color')).toBe('rgb(245, 245, 242)')
+  expect(await css(h.getByRole('link', { name: 'Sign in' }), 'color')).toBe('rgb(154, 154, 150)')
+  const gs = h.getByRole('link', { name: 'Get started' })
+  expect(await css(gs, 'color')).toBe('rgb(26, 18, 0)')
+  expect(await css(gs, 'backgroundColor')).toBe('rgb(245, 179, 1)')
+  expect(await css(page.locator('footer').getByRole('link', { name: 'Pricing' }), 'color')).toBe('rgb(154, 154, 150)')
+})
