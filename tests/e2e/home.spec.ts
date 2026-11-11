@@ -103,6 +103,27 @@ test('exactly the first card is lit', async ({ page }) => {
   expect(lit[0]).toBe(true)
 })
 
+for (const width of [1024, 768]) {
+  test(`at ${width} Start here, How-to and Troubleshooting carry their label in flow under the heading, the rule beneath`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    for (const n of [1, 2, 5]) {
+      const r = await page.locator('.dx-homebody').evaluate((body, n) => {
+        const h2 = body.querySelectorAll(':scope > h2')[n - 1] as HTMLElement
+        const sec = body.querySelectorAll(':scope > .dx-hsec')[n - 1] as HTMLElement
+        const cols = sec.querySelector('.cols') as HTMLElement
+        return { pos: getComputedStyle(cols).position, top: getComputedStyle(cols).top, h2Bottom: h2.getBoundingClientRect().bottom, label: cols.getBoundingClientRect(), rule: cols.getBoundingClientRect().bottom + parseFloat(getComputedStyle(cols).borderBottomWidth) * 0, list: sec.querySelector('.dx-hgrid')!.getBoundingClientRect().top, h2Border: getComputedStyle(h2).borderBottomWidth, colsBorder: getComputedStyle(cols).borderBottomWidth }
+      }, n)
+      expect(r.pos, `section ${n}`).toBe('static')
+      expect(r.top, `section ${n}`).toBe('auto')
+      expect(r.label.top, `section ${n}`).toBeGreaterThanOrEqual(r.h2Bottom - 1)
+      expect(r.rule, `section ${n}`).toBeLessThanOrEqual(r.list)
+      expect(r.colsBorder, `section ${n}`).toBe('1px')
+      expect(r.h2Border, `section ${n}`).toBe('0px')
+    }
+  })
+}
+
 for (const width of [1024, 900, 768]) {
   test(`at ${width} the Reference and Explanation labels and rules line up, wrapped heading or not`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })

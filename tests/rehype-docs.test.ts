@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { markQuotes, wrapChangelog, wrapSteps } from '../lib/rehype-docs.mjs'
-import { em, h2, h3, hr, p, quote, root, tag, text, toText } from './lib/hast'
+import { em, h2, h3, hr, p, quote, root, strong, tag, text, toText, ul } from './lib/hast'
 
 const ws = () => text('\n')
 const kids = (n: { children?: unknown[] }) => (n.children ?? []) as Parameters<typeof tag>[0][]
@@ -67,9 +67,55 @@ describe('markQuotes', () => {
   })
 })
 
-it('wrapChangelog is a no-op until Task 10', () => {
-  const t = root(h2('a', 'x'))
-  const before = JSON.stringify(t)
-  expect(wrapChangelog(t, {})).toBe(t)
-  expect(JSON.stringify(t)).toBe(before)
+describe('wrapChangelog', () => {
+  const FILE = { path: '/repo/pages/changelog/index.mdx' }
+  it('wraps dated entries, keeps the heading id and words, drops the rules between', () => {
+    const t = root(p('intro'), hr(), h2('2026-07-18--public-reliability-ledger', '2026-07-18 — Public reliability ledger'), p(strong('Added')), ul(), hr(), h2('2026-04-01--initial', '2026-04-01 — Initial preview release'), ul())
+    wrapChangelog(t, FILE)
+    expect(t.children.map(tag)).toEqual(['p', 'article', 'article'])
+    const a = t.children[1]!
+    expect(a.properties!.className).toEqual(['dx-cl-entry', 'first'])
+    expect(t.children[2]!.properties!.className).toEqual(['dx-cl-entry'])
+    expect(a.children!.map(tag)).toEqual(['div', 'h2', 'p', 'ul'])
+    expect(toText(a.children![0]!)).toBe('2026-07-18')
+    expect(a.children![0]!.properties!.ariaHidden).toBe('true')
+    expect(a.children![1]!.properties!.id).toBe('2026-07-18--public-reliability-ledger')
+    expect(toText(a.children![1]!)).toBe('2026-07-18 — Public reliability ledger')
+    expect(a.children![1]!.children![0]!.properties!.className).toEqual(['sr'])
+    expect(a.children![2]!.properties!.className).toEqual(['dx-kind'])
+  })
+  it('takes a date range, and a paragraph that is more than a short strong is not a kind', () => {
+    const t = root(h2('x', '2026-07-02 → 07-12 — Self-healing'), p(strong('Added'), ' more'), p(strong('a'.repeat(41))))
+    wrapChangelog(t, FILE)
+    const a = t.children[0]!
+    expect(toText(a.children![0]!)).toBe('2026-07-02 → 07-12')
+    expect(toText(a.children![1]!)).toBe('2026-07-02 → 07-12 — Self-healing')
+    expect(a.children![2]!.properties!.className).toBeUndefined()
+    expect(a.children![3]!.properties!.className).toBeUndefined()
+  })
+  it('skips the whitespace text nodes real MDX leaves between elements', () => {
+    const ws = () => text('\n')
+    const t = root(p('intro'), ws(), hr(), ws(), h2('a', '2026-07-18 — A'), ws(), p(strong('Added')), ws(), ul(), ws(), hr(), ws(), h2('b', '2026-04-01 — B'), ws(), ul(), ws())
+    wrapChangelog(t, FILE)
+    const real = t.children.filter((c) => c.type !== 'text')
+    expect(real.map(tag)).toEqual(['p', 'article', 'article'])
+    expect(real[1]!.properties!.className).toEqual(['dx-cl-entry', 'first'])
+    expect(real[1]!.children!.map(tag)).toEqual(['div', 'h2', 'text', 'p', 'text', 'ul'])
+    expect(t.children.some((c) => tag(c) === 'hr')).toBe(false)
+    expect(real[2]!.children!.filter((c) => c.type !== 'text').map(tag)).toEqual(['div', 'h2', 'ul'])
+    // the whitespace after an entry's last element stays outside it
+    expect(tag(t.children[t.children.length - 1]!)).toBe('text')
+    expect(real[2]!.children!.at(-1)!.type).toBe('element')
+  })
+  it('leaves an h2 that is not a dated entry, and an hr before it', () => {
+    const t = root(h2('a', 'Intro'), hr(), h2('b', 'Notes'))
+    wrapChangelog(t, FILE)
+    expect(t.children.map(tag)).toEqual(['h2', 'hr', 'h2'])
+  })
+  it('does nothing on any other file', () => {
+    const t = root(h2('a', '2026-07-18 — X'))
+    const s = JSON.stringify(t)
+    wrapChangelog(t, { path: '/repo/pages/quickstart.mdx' })
+    expect(JSON.stringify(t)).toBe(s)
+  })
 })

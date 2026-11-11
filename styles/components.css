@@ -293,19 +293,20 @@ article.nextra-content > .dx-home { width: 100%; min-width: 0; }
 .dx-homebody > * { grid-column: 1 / -1; min-width: 0; align-self: start; }
 .dx-homebody > h2 { position: relative; margin: 72px 0 20px; padding: 0 0 14px; border: 0; border-bottom: 1px solid var(--line); font-family: var(--font-sans); font-size: 26px; line-height: 32px; letter-spacing: -.02em; font-weight: 600; color: var(--text-strong); scroll-margin-top: 24px; }
 .dx-homebody > .dx-hsec { position: relative; }
-.dx-hsec .cols { position: absolute; right: 0; top: -67px; margin: 0; line-height: 32px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.dx-hsec .cols { position: static; display: block; margin: 0 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); line-height: 16px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
 
 /* rows by position: 1 h2, 2 block | 3 h2, 4 block | 5 + 6 side by side | 7 h2, 8 block | 9 hr | 10 + 11 three across */
+/* Every section label sits in flow under its h2 and carries the rule; no fixed offsets. */
+.dx-homebody > h2:nth-of-type(-n+5) { margin-bottom: 0; padding-bottom: 8px; border-bottom: 0; }
 .dx-homebody > h2:nth-of-type(1) { grid-row: 1; }
 .dx-homebody > .dx-hsec:nth-of-type(1) { grid-row: 2; }
 .dx-homebody > h2:nth-of-type(2) { grid-row: 3; }
 .dx-homebody > .dx-hsec:nth-of-type(2) { grid-row: 4; }
 /* Reference and Explanation share a row for their h2s (bottom-aligned, so a wrapping title only grows the row) and a row for their labels; the rule sits under the label. */
-.dx-homebody > h2:nth-of-type(3), .dx-homebody > h2:nth-of-type(4) { grid-row: 5; align-self: end; margin-bottom: 0; padding-bottom: 8px; border-bottom: 0; }
+.dx-homebody > h2:nth-of-type(3), .dx-homebody > h2:nth-of-type(4) { grid-row: 5; align-self: end; }
 .dx-homebody > h2:nth-of-type(3), .dx-homebody > .dx-hsec:nth-of-type(3) { grid-column: 1 / 7; }
 .dx-homebody > h2:nth-of-type(4), .dx-homebody > .dx-hsec:nth-of-type(4) { grid-column: 7 / -1; }
 .dx-homebody > .dx-hsec:nth-of-type(3), .dx-homebody > .dx-hsec:nth-of-type(4) { grid-row: 6; }
-.dx-homebody > .dx-hsec:nth-of-type(3) .cols, .dx-homebody > .dx-hsec:nth-of-type(4) .cols { position: static; display: block; margin: 0 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); line-height: 16px; }
 .dx-homebody > h2:nth-of-type(5) { grid-row: 7; }
 .dx-homebody > .dx-hsec:nth-of-type(5) { grid-row: 8; }
 
@@ -378,3 +379,25 @@ article.nextra-content > .dx-home { width: 100%; min-width: 0; }
   .dx-homebody > h2:nth-of-type(n+6) { margin-top: 32px; }
   .dx-homebody > ul { margin-bottom: 8px !important; }
 }
+
+/* ---------- changelog (lib/rehype-docs.mjs wraps each dated h2 in article.dx-cl-entry; wire.css 494-502) ---------- */
+/* The date column is layout, not motion: it holds its place while a long entry scrolls past. */
+@media (min-width: 1024px) {
+  article.nextra-content > main:has(.dx-cl-entry) { max-width: 900px; }
+}
+.dx-cl-entry { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 36px 0 28px; border-top: 1px solid var(--line); position: relative; }
+.dx-cl-entry > * { min-width: 0; }
+.dx-cl-date { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; line-height: 20px; color: var(--text-strong); }
+.dx-cl-date::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--accent); background: var(--bg); }
+.dx-cl-entry.first .dx-cl-date::before { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.dx-cl-entry > h2 { margin: 0 0 6px; }
+.dx-cl-entry > :is(p, ul, ol, h3, pre, blockquote):last-child { margin-bottom: 0; }
+.dx-kind { margin: 18px 0 6px !important; font-family: var(--font-mono); font-size: 11px !important; line-height: 16px !important; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+.dx-kind strong { color: inherit !important; font-weight: 500 !important; }
+@media (min-width: 1024px) {
+  .dx-cl-entry { grid-template-columns: 180px minmax(0, 1fr); column-gap: 32px; row-gap: 0; }
+  .dx-cl-entry > * { grid-column: 2; }
+  .dx-cl-date { grid-column: 1; grid-row: 1 / span 40; align-self: start; position: sticky; top: calc(var(--header-h) + 24px); padding-top: 7px; }
+  .dx-cl-entry > h2 { margin-top: 0; }
+}
+.dx-kind + :is(ul, ol) { margin-top: 0 !important; }
