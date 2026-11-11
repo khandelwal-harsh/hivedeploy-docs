@@ -10,7 +10,7 @@ Nextra 3.3.1 on the Next 14 pages router, restyled dark-only to match www.hivede
 | `pnpm test:redesign-guard` | 1 file, 3 tests passed |
 | `pnpm typecheck` | clean |
 | `pnpm lint` | 0 errors, warnings only (`import/no-anonymous-default-export` on the `_meta.ts` files) |
-| `pnpm e2e` (Playwright, production server on :3320) | 349 passed, 111 skipped, the same on four runs in a row. The skips are phone-project runs of tests that set their own viewport, linked-worktree timestamp skips and viewport-specific skips. At Task 14 the suite was 250 passed, 108 skipped. |
+| `pnpm e2e` (Playwright, production server on :3320) | 349 passed, 111 skipped, the same on five full runs in a row. The skips are phone-project runs of tests that set their own viewport, linked-worktree timestamp skips and viewport-specific skips. At Task 14 the suite was 250 passed, 108 skipped. |
 
 ## Lighthouse (details in `docs/PERF.md`)
 
