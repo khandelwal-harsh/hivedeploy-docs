@@ -1,99 +1,90 @@
-/* Force mono font on Nextra's chrome (topbar, sidebar, breadcrumbs, TOC) */
-.nextra-nav-container,
-.nextra-sidebar-container,
-.nextra-toc,
-.nextra-breadcrumb {
-  font-family: var(--font-mono);
+/* Nextra's own classes: sidebar, breadcrumb, article, pagination. Nextra paints its utility classes
+   (`dark:_text-…`, `dark:hover:_bg-primary-…`) at higher specificity than a class, so colours here
+   carry !important where, and only where, those utilities win. Layout and spacing do not. */
+
+:root {
+  --header-h: 56px;
+  /* the desktop sidebar subtracted a mobile menu bar this site does not have */
+  --nextra-menu-height: 0px !important;
 }
 
-/* Body prose stays in sans */
-.nextra-content article {
-  font-family: var(--font-sans);
+/* ---------- sidebar ---------- */
+.nextra-sidebar-container { background: var(--bg); }
+@media (min-width: 768px) {
+  .nextra-sidebar-container { top: var(--header-h) !important; border-right: 1px solid var(--line); }
+  .nextra-sidebar-container[class~="md:_w-64"] { width: 272px; }
+}
+.nextra-sidebar-container .nextra-scrollbar { padding: 22px 16px 32px 20px; scrollbar-width: none; }
+.nextra-sidebar-container .nextra-scrollbar::-webkit-scrollbar { display: none; }
+.nextra-sidebar-container li > a { align-items: center; padding: 6px 10px; border-radius: 8px; font-size: 14px; line-height: 20px; font-weight: 400; transition: color .15s, background .15s;
+  color: var(--text-muted) !important; background: transparent !important; }
+.nextra-sidebar-container li > a:hover { color: var(--text-strong) !important; background: var(--glass) !important; }
+/* the open page: a glass pill, no accent, no left border (Nextra's hue-44 tint is overridden here) */
+.nextra-sidebar-container li.active > a, .nextra-sidebar-container li > a[aria-current="page"] { color: var(--text-strong) !important; background: var(--glass-hover) !important; box-shadow: inset 0 0 0 1px var(--line-strong); border-left: 0; font-weight: 400; }
+/* folders are the group labels: the only mono in the chrome */
+.nextra-sidebar-container li > button { padding: 6px 10px; font-family: var(--font-mono); font-size: 11px; line-height: 20px; letter-spacing: .14em; text-transform: uppercase; font-weight: 400;
+  color: var(--text-muted) !important; background: transparent !important; }
+.nextra-sidebar-container li > button:hover { color: var(--text-strong) !important; }
+
+/* ---------- breadcrumb ---------- */
+.nextra-breadcrumb { margin: 0 0 18px; font-size: 13px; line-height: 1.4; color: var(--text-muted) !important; }
+.nextra-breadcrumb > span { color: var(--text-muted) !important; }
+.nextra-breadcrumb > span:last-child { color: var(--text-strong) !important; font-weight: 400; }
+.nextra-breadcrumb svg { color: var(--text-faint); }
+
+/* ---------- article ---------- */
+/* Nextra paints the article itself in slate-200 from a dark: utility, so the one forced colour is
+   here. Components set their own colour on their children; nothing below relies on this for them. */
+.nextra-content { color: var(--text) !important; }
+
+/* Default-layout articles only: Nextra's <main> is the article's own child there. Full-layout pages (home, API
+   reference) get their <main> one level down (theme.config.tsx Main), so none of these rules reach them. */
+article.nextra-content > main { padding-top: 24px; font-size: 16px; line-height: 1.7; }
+/* A full-layout article page (API reference) has no `article > main` padding: give its page head the same 24 px, so it
+   clears the header as a default page's breadcrumb does. The home page is .dx-home and has no .dx-body. */
+article.nextra-content:not(:has(> main)) .dx-body { padding-top: 24px; }
+/* On the API reference the prose above Scalar keeps the reading measure; Scalar itself keeps the full width (D13). */
+.dx-full .dx-body > :has(~ .dx-scalar) { max-width: 720px; }
+@media (min-width: 768px) {
+  article.nextra-content > main { max-width: 720px; padding-left: 0; padding-right: 0; }
+  /* The column keeps 32 px from the sidebar rule and from the rail or the window edge. Without it, from 768 to about
+     1000 px the 720 column filled the space between them and the text ran into both. Where the column is a full 720
+     it is centred as before, so wide layouts (and the step squares from 1340) do not move. */
+  article.nextra-content:has(> main) { padding-left: 32px; padding-right: 32px; }
 }
 
-/* Code blocks: surface-2 background, mono */
-.nextra-code-block pre,
-.nextra-code pre,
-code {
-  font-family: var(--font-mono) !important;
-  background: var(--surface-2) !important;
-}
+.dx-body p, .dx-body li { line-height: 1.7; }
+.dx-body > p { margin: 0 0 15px; }
+.dx-body strong { color: var(--text-strong); font-weight: 600; }
+.dx-body li::marker { color: var(--text-muted); }
 
-/* Surface tokens for Nextra chrome */
-.nextra-nav-container > nav {
-  background: var(--surface-1) !important;
-  border-bottom: 1px solid var(--border) !important;
-}
+.dx-body h2, .dx-body h3, .dx-body h4 { color: var(--text-strong) !important; font-family: var(--font-sans); border: 0; padding: 0; scroll-margin-top: 24px; }
+.dx-body h2 { font-size: 26px; line-height: 1.25; letter-spacing: -.02em; font-weight: 600; margin: 42px 0 14px; }
+.dx-body h3 { font-size: 19px; line-height: 1.35; letter-spacing: -.01em; font-weight: 600; margin: 26px 0 8px; }
+.dx-body h4 { font-size: 16px; line-height: 1.4; font-weight: 600; margin: 22px 0 6px; }
+.dx-body h5, .dx-body h6 { color: var(--text-strong) !important; font-family: var(--font-sans); font-weight: 600; line-height: 1.4; margin: 18px 0 4px; scroll-margin-top: 24px; }
+.dx-body h5 { font-size: 15px; }
+.dx-body h6 { font-size: 14px; }
 
-.nextra-sidebar-container {
-  background: var(--surface-1) !important;
-  border-right: 1px solid var(--border) !important;
-}
+/* inline code on glass with a hairline */
+.nextra-content code:not(pre code) { background: var(--glass) !important; border: 1px solid var(--line) !important; border-radius: 6px; padding: 1px 5px; font-size: 13.5px; }
+/* code blocks: see components.css (.dx-code) */
 
-/* Sidebar active item: surface-3 bg + 2px left info border */
-.nextra-sidebar-container a[aria-current="page"] {
-  background: var(--surface-3) !important;
-  border-left: 2px solid var(--info) !important;
-  color: var(--foreground-strong) !important;
-}
 
-/* Sidebar hover */
-.nextra-sidebar-container a:hover {
-  background: var(--surface-3) !important;
-}
+/* links in prose: accent text, accent-edge underline (the collapsed contents list is not prose) */
+.nextra-content :is(p, li, td, th, blockquote, dd, summary) a:not(.subheading-anchor):not(.dx-mtoc a) {
+  color: var(--accent-text) !important; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--accent-edge); transition: text-decoration-color .2s, color .2s; }
+.nextra-content :is(p, li, td, th, blockquote, dd, summary) a:not(.subheading-anchor):not(.dx-mtoc a):hover { text-decoration-color: var(--accent); }
 
-/* Search input */
-.nextra-search input {
-  background: var(--surface-2) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--foreground) !important;
-  font-family: var(--font-mono) !important;
-}
-
-/* Headings */
-.nextra-content h1,
-.nextra-content h2,
-.nextra-content h3,
-.nextra-content h4 {
-  color: var(--foreground-strong) !important;
-  font-family: var(--font-sans) !important;
-  letter-spacing: -0.01em;
-}
-
-/* Body */
-.nextra-content {
-  color: var(--foreground);
-}
-
-/* Inline code in prose */
-.nextra-content code:not(pre code) {
-  background: var(--surface-2) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 6px;
-  padding: 0.125rem 0.375rem;
-  font-size: 0.875em;
-}
-
-/* Tables */
-.nextra-content table {
-  border: 1px solid var(--border) !important;
-}
-.nextra-content th {
-  background: var(--surface-2) !important;
-  font-family: var(--font-mono) !important;
-  color: var(--foreground-strong) !important;
-}
-.nextra-content td {
-  border-top: 1px solid var(--border) !important;
-}
-
-/* Links */
-.nextra-content a:not(.nextra-card a) {
-  color: var(--info) !important;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: color-mix(in srgb, var(--info) 40%, transparent);
-}
-.nextra-content a:hover {
-  text-decoration-color: var(--info);
+/* ---------- previous / next: two hairline cards ---------- */
+.dx-pn > div { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0; padding: 0; border: 0; }
+.dx-pn a { display: flex; align-items: center; gap: 10px; max-width: none; padding: 16px 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass);
+  font-size: 15px; line-height: 1.4; font-weight: 500; color: var(--text-strong) !important; transition: border-color .2s, background .2s; }
+.dx-pn a:hover { border-color: var(--line-hover); background: var(--glass-hover); }
+.dx-pn a[class~="ltr:_ml-auto"] { grid-column: 2; margin: 0; justify-self: stretch; justify-content: flex-end; text-align: right; }
+.dx-pn svg { color: var(--text-muted); height: 16px; }
+@media (max-width: 767px) {
+  .dx-pn > div { grid-template-columns: 1fr; }
+  .dx-pn a[class~="ltr:_ml-auto"] { grid-column: 1; }
 }

@@ -54,3 +54,11 @@ tsconfig.tsbuildinfo
 !.vscode/extensions.json
 !.vscode/settings.json
 .env*
+
+# Playwright
+test-results/
+playwright-report/
+
+# Redesign evidence (eye screenshots, Lighthouse JSON) cited by docs/PERF.md and docs/REDESIGN-REPORT.md.
+# Kept out of test-results/, which every e2e run clears.
+.redesign-evidence/

@@ -1,0 +1,165 @@
+import { describe, expect, it } from 'vitest'
+import { markQuotes, nameTables, wrapChangelog, wrapSteps } from '../lib/rehype-docs.mjs'
+import { em, h2, h3, hr, p, quote, root, strong, tag, text, toText, ul } from './lib/hast'
+
+const ws = () => text('\n')
+const kids = (n: { children?: unknown[] }) => (n.children ?? []) as Parameters<typeof tag>[0][]
+
+describe('wrapSteps', () => {
+  it('wraps each "Step N —" section and keeps the heading whole', () => {
+    const t = root(h2('step-1--sign-up', 'Step 1 — Sign up'), p('a'), h2('step-2--connect', 'Step 2 — Connect'), p('b'), h2('what-just-happened', 'What just happened'), p('c'))
+    wrapSteps(t)
+    expect(t.children.map(tag)).toEqual(['div', 'div', 'h2', 'p'])
+    expect(t.children[0]!.properties).toMatchObject({ className: ['dx-step'], dataStep: '01' })
+    expect(kids(t.children[0]!).map(tag)).toEqual(['h2', 'p'])
+    expect(kids(t.children[0]!)[0]!.properties!.id).toBe('step-1--sign-up')
+    expect(toText(kids(t.children[0]!)[0]!)).toBe('Step 1 — Sign up')
+  })
+  it('leaves a page without steps alone', () => {
+    const t = root(h2('a', 'Prerequisites'), p('x'))
+    const before = JSON.stringify(t)
+    wrapSteps(t)
+    expect(JSON.stringify(t)).toBe(before)
+  })
+  it('"Step" inside a sentence or an h3 is not a step', () => {
+    const t = root(h2('a', 'Next Step 2 — later'), h3('b', 'Step 1 — nested'))
+    wrapSteps(t)
+    expect(t.children.map(tag)).toEqual(['h2', 'h3'])
+  })
+  it('a rule ends a step and stays outside it', () => {
+    const t = root(h2('a', 'Step 3 — Go'), p('x'), hr(), p('y'))
+    wrapSteps(t)
+    expect(t.children.map(tag)).toEqual(['div', 'hr', 'p'])
+    expect(t.children[0]!.properties).toMatchObject({ dataStep: '03' })
+  })
+  it('whitespace text nodes between real MDX elements neither end a step nor get stranded', () => {
+    const t = root(h2('a', 'Step 1 — A'), ws(), p('x'), ws(), h2('b', 'Step 2 — B'), ws(), p('y'), ws(), hr(), ws(), p('z'))
+    wrapSteps(t)
+    expect(t.children.filter((n) => n.type !== 'text').map(tag)).toEqual(['div', 'div', 'hr', 'p'])
+    const steps = t.children.filter((n) => tag(n) === 'div')
+    expect(steps.map((s) => kids(s).filter((n) => n.type !== 'text').map(tag))).toEqual([['h2', 'p'], ['h2', 'p']])
+    expect(kids(steps[1]!).at(-1)!.type).not.toBe('text')
+  })
+})
+
+describe('markQuotes', () => {
+  it('an all-italic quote is the agent speaking; a plain quote is a note', () => {
+    const t = root(quote(p(em('"What\'s the intent?"'))), quote(p('If the email does not arrive, check spam.')))
+    markQuotes(t)
+    expect(t.children[0]!.properties!.className).toEqual(['dx-quote', 'agent'])
+    expect(t.children[1]!.properties!.className).toEqual(['dx-quote'])
+  })
+  it('one plain paragraph makes the whole quote a note', () => {
+    const t = root(quote(p(em('a')), p('b')))
+    markQuotes(t)
+    expect(t.children[0]!.properties!.className).toEqual(['dx-quote'])
+  })
+  it('whitespace nodes in a quote are not paragraphs, and whitespace before the em is skipped', () => {
+    const t = root(quote(ws(), p(ws(), em('a')), ws(), p(em('b')), ws()))
+    markQuotes(t)
+    expect(t.children[0]!.properties!.className).toEqual(['dx-quote', 'agent'])
+  })
+  it('finds quotes below the root', () => {
+    const inner = quote(p('x'))
+    const t = root({ type: 'element', tagName: 'ul', properties: {}, children: [{ type: 'element', tagName: 'li', properties: {}, children: [inner] }] })
+    markQuotes(t)
+    expect(inner.properties!.className).toEqual(['dx-quote'])
+  })
+})
+
+describe('wrapChangelog', () => {
+  const FILE = { path: '/repo/pages/changelog/index.mdx' }
+  it('wraps dated entries, keeps the heading id and words, drops the rules between', () => {
+    const t = root(p('intro'), hr(), h2('2026-07-18--public-reliability-ledger', '2026-07-18 — Public reliability ledger'), p(strong('Added')), ul(), hr(), h2('2026-04-01--initial', '2026-04-01 — Initial preview release'), ul())
+    wrapChangelog(t, FILE)
+    expect(t.children.map(tag)).toEqual(['p', 'article', 'article'])
+    const a = t.children[1]!
+    expect(a.properties!.className).toEqual(['dx-cl-entry', 'first'])
+    expect(t.children[2]!.properties!.className).toEqual(['dx-cl-entry'])
+    expect(a.children!.map(tag)).toEqual(['div', 'h2', 'p', 'ul'])
+    expect(toText(a.children![0]!)).toBe('2026-07-18')
+    expect(a.children![0]!.properties!.ariaHidden).toBe('true')
+    expect(a.children![1]!.properties!.id).toBe('2026-07-18--public-reliability-ledger')
+    expect(toText(a.children![1]!)).toBe('2026-07-18 — Public reliability ledger')
+    expect(a.children![1]!.children![0]!.properties!.className).toEqual(['sr'])
+    expect(a.children![2]!.properties!.className).toEqual(['dx-kind'])
+  })
+  it('takes a date range, and a paragraph that is more than a short strong is not a kind', () => {
+    const t = root(h2('x', '2026-07-02 → 07-12 — Self-healing'), p(strong('Added'), ' more'), p(strong('a'.repeat(41))))
+    wrapChangelog(t, FILE)
+    const a = t.children[0]!
+    expect(toText(a.children![0]!)).toBe('2026-07-02 → 07-12')
+    expect(toText(a.children![1]!)).toBe('2026-07-02 → 07-12 — Self-healing')
+    expect(a.children![2]!.properties!.className).toBeUndefined()
+    expect(a.children![3]!.properties!.className).toBeUndefined()
+  })
+  it('skips the whitespace text nodes real MDX leaves between elements', () => {
+    const ws = () => text('\n')
+    const t = root(p('intro'), ws(), hr(), ws(), h2('a', '2026-07-18 — A'), ws(), p(strong('Added')), ws(), ul(), ws(), hr(), ws(), h2('b', '2026-04-01 — B'), ws(), ul(), ws())
+    wrapChangelog(t, FILE)
+    const real = t.children.filter((c) => c.type !== 'text')
+    expect(real.map(tag)).toEqual(['p', 'article', 'article'])
+    expect(real[1]!.properties!.className).toEqual(['dx-cl-entry', 'first'])
+    expect(real[1]!.children!.map(tag)).toEqual(['div', 'h2', 'text', 'p', 'text', 'ul'])
+    expect(t.children.some((c) => tag(c) === 'hr')).toBe(false)
+    expect(real[2]!.children!.filter((c) => c.type !== 'text').map(tag)).toEqual(['div', 'h2', 'ul'])
+    // the whitespace after an entry's last element stays outside it
+    expect(tag(t.children[t.children.length - 1]!)).toBe('text')
+    expect(real[2]!.children!.at(-1)!.type).toBe('element')
+  })
+  it('leaves an h2 that is not a dated entry, and an hr before it', () => {
+    const t = root(h2('a', 'Intro'), hr(), h2('b', 'Notes'))
+    wrapChangelog(t, FILE)
+    expect(t.children.map(tag)).toEqual(['h2', 'hr', 'h2'])
+  })
+  it('does nothing on any other file', () => {
+    const t = root(h2('a', '2026-07-18 — X'))
+    const s = JSON.stringify(t)
+    wrapChangelog(t, { path: '/repo/pages/quickstart.mdx' })
+    expect(JSON.stringify(t)).toBe(s)
+  })
+})
+
+describe('nameTables', () => {
+  const table = () => ({ type: 'element', tagName: 'table', properties: {}, children: [] }) as Parameters<typeof tag>[0]
+  const code = (t: string) => ({ type: 'element', tagName: 'code', properties: {}, children: [text(t)] }) as Parameters<typeof tag>[0]
+  it('labels each table with the text of the nearest heading before it, at any depth, inline code included', () => {
+    const a = table()
+    const b = table()
+    const c = table()
+    const h = { type: 'element', tagName: 'h3', properties: { id: 'x' }, children: [text('The '), code('X_ID'), text(' variable')] } as Parameters<typeof tag>[0]
+    const t = root(h2('req', 'Required'), ws(), a, ws(), h, p('words'), { type: 'element', tagName: 'div', properties: {}, children: [b] }, h2('more', 'More'), p('no table'), quote(p('x')), c)
+    nameTables(t)
+    expect(a.properties!.dataHeading).toBe('Required')
+    expect(b.properties!.dataHeading).toBe('The X_ID variable')
+    expect(c.properties!.dataHeading).toBe('More')
+  })
+  it('a table with no heading before it gets no label', () => {
+    const a = table()
+    const t = root(p('intro'), a, h2('later', 'Later'))
+    nameTables(t)
+    expect(a.properties!.dataHeading).toBeUndefined()
+  })
+  it('numbers tables that would share a label, and leaves a unique one alone', () => {
+    const [a, b, c, d] = [table(), table(), table(), table()]
+    const t = root(h2('ops', 'Operational tasks'), a, p('x'), b, h2('req', 'Required'), c, h2('ops2', 'Operational tasks'), d)
+    nameTables(t)
+    expect([a, b, c, d].map((x) => x.properties!.dataHeading)).toEqual([
+      'Operational tasks (1 of 3)',
+      'Operational tasks (2 of 3)',
+      'Required',
+      'Operational tasks (3 of 3)',
+    ])
+  })
+  it('finds a heading inside a step wrapper, and trims and collapses its whitespace', () => {
+    const a = table()
+    const t = root(h2('s', 'Step 1 — A'), p('x'), a)
+    wrapSteps(t)
+    nameTables(t)
+    expect(a.properties!.dataHeading).toBe('Step 1 — A')
+    const b = table()
+    const u = root({ type: 'element', tagName: 'h4', properties: {}, children: [text('  Two\n words ')] }, b)
+    nameTables(u)
+    expect(b.properties!.dataHeading).toBe('Two words')
+  })
+})

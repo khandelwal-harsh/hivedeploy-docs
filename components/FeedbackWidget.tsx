@@ -53,50 +53,24 @@ export function FeedbackWidget() {
 
   if (stage === 'thanks') {
     return (
-      <div style={feedbackContainerStyle}>
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--foreground-muted)' }}>
-          Thanks for the feedback.
-        </span>
+      <div className="dx-fb">
+        <span className="q">Thanks for the feedback.</span>
       </div>
     )
   }
 
   if (stage === 'comment') {
     return (
-      <form onSubmit={handleSubmitComment} style={feedbackContainerStyle}>
-        <label
-          htmlFor="feedback-comment"
-          style={{ fontFamily: 'var(--font-mono)', color: 'var(--foreground-muted)', display: 'block', marginBottom: '0.5rem' }}
-        >
+      <form onSubmit={handleSubmitComment} className="dx-fb comment">
+        <label htmlFor="feedback-comment" className="q">
           What&apos;s missing or wrong? (optional)
         </label>
-        <textarea
-          id="feedback-comment"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={4}
-          maxLength={1000}
-          style={{
-            width: '100%',
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            borderRadius: '0.375rem',
-            padding: '0.5rem 0.75rem',
-            color: 'var(--foreground)',
-            fontFamily: 'var(--font-sans)',
-            resize: 'vertical',
-          }}
-        />
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-          <button type="submit" disabled={submitting} style={buttonStyle}>
+        <textarea id="feedback-comment" value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={1000} />
+        <div className="acts">
+          <button type="submit" disabled={submitting} className="btn glass">
             Submit
           </button>
-          <button
-            type="button"
-            onClick={handleSkip}
-            disabled={submitting}
-            style={{ ...buttonStyle, background: 'transparent', border: 'none', color: 'var(--foreground-muted)' }}
-          >
+          <button type="button" onClick={handleSkip} disabled={submitting} className="btn ghost">
             Skip
           </button>
         </div>
@@ -105,46 +79,14 @@ export function FeedbackWidget() {
   }
 
   return (
-    <div style={feedbackContainerStyle}>
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          color: 'var(--foreground-muted)',
-          marginRight: '1rem',
-        }}
-      >
-        Was this page helpful?
-      </span>
-      <button type="button" onClick={handleUp} aria-label="Yes, this page was helpful" style={buttonStyle}>
-        <ThumbsUp size={14} /> Yes
+    <div className="dx-fb">
+      <span className="q">Was this page helpful?</span>
+      <button type="button" onClick={handleUp} aria-label="Yes, this page was helpful" className="btn glass">
+        <ThumbsUp size={14} aria-hidden="true" /> Yes
       </button>
-      <button type="button" onClick={handleDown} aria-label="No, this page was not helpful" style={buttonStyle}>
-        <ThumbsDown size={14} /> No
+      <button type="button" onClick={handleDown} aria-label="No, this page was not helpful" className="btn glass">
+        <ThumbsDown size={14} aria-hidden="true" /> No
       </button>
     </div>
   )
-}
-
-const feedbackContainerStyle: React.CSSProperties = {
-  borderTop: '1px solid var(--border)',
-  padding: '1rem 0',
-  marginTop: '3rem',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-  flexWrap: 'wrap',
-}
-
-const buttonStyle: React.CSSProperties = {
-  background: 'var(--surface-2)',
-  border: '1px solid var(--border-strong)',
-  borderRadius: '0.375rem',
-  padding: '0.375rem 0.75rem',
-  color: 'var(--foreground)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: '0.875rem',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.375rem',
 }

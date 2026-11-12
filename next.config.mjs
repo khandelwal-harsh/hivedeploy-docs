@@ -1,4 +1,6 @@
 import nextra from 'nextra'
+import { obsidian } from './lib/shiki-obsidian.mjs'
+import { rehypeDocs } from './lib/rehype-docs.mjs'
 
 const withNextra = nextra({
   theme: 'nextra-theme-docs',
@@ -7,6 +9,10 @@ const withNextra = nextra({
     codeblocks: true,
   },
   defaultShowCopyCode: true,
+  mdxOptions: {
+    rehypePlugins: [rehypeDocs],
+    rehypePrettyCodeOptions: { theme: { light: obsidian, dark: obsidian } },
+  },
 })
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -18,8 +24,8 @@ const csp = isProd
   ? [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' va.vercel-scripts.com",
-      "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-      "font-src 'self' fonts.gstatic.com",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
       "img-src 'self' data: https://*.vercel-storage.com",
       "connect-src 'self' vitals.vercel-insights.com",
       "frame-ancestors 'none'",
@@ -27,8 +33,8 @@ const csp = isProd
   : [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' va.vercel-scripts.com",
-      "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-      "font-src 'self' fonts.gstatic.com",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
       "img-src 'self' data: blob: https://*.vercel-storage.com",
       "connect-src 'self' ws: wss: vitals.vercel-insights.com",
       "frame-ancestors 'none'",
@@ -48,6 +54,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['geist'],
   pageExtensions: ['mdx', 'tsx', 'ts'],
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]

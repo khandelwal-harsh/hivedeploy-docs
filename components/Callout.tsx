@@ -1,5 +1,4 @@
-import { ReactNode } from 'react'
-import { Info, AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 type CalloutType = 'info' | 'warning' | 'error' | 'success'
 
@@ -8,39 +7,41 @@ interface CalloutProps {
   children: ReactNode
 }
 
-const config: Record<CalloutType, { color: string; icon: typeof Info; label: string }> = {
-  info: { color: 'var(--info)', icon: Info, label: 'Note' },
-  warning: { color: 'var(--warn)', icon: AlertTriangle, label: 'Warning' },
-  error: { color: 'var(--fail)', icon: XCircle, label: 'Error' },
-  success: { color: 'var(--ok)', icon: CheckCircle2, label: 'Success' },
+const LABELS: Record<CalloutType, string> = { info: 'Note', warning: 'Warning', error: 'Error', success: 'Success' }
+
+/** Warning always carries the triangle, so it never rests on colour alone. */
+function Mark({ type }: { type: CalloutType }) {
+  if (type === 'warning')
+    return (
+      <svg className="tri" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M8 1.8 15 14.2H1Z" />
+        <path className="bang" d="M8 6.2v3.6M8 11.6v.4" />
+      </svg>
+    )
+  if (type === 'error')
+    return (
+      <svg className="glyph x" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M4 4l8 8M12 4l-8 8" />
+      </svg>
+    )
+  if (type === 'success')
+    return (
+      <svg className="glyph ok" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M3 8.5l3.2 3.2L13 4.8" />
+      </svg>
+    )
+  return <i className="dot" aria-hidden="true" />
 }
 
 export function Callout({ type = 'info', children }: CalloutProps) {
-  const { color, icon: Icon, label } = config[type]
+  const label = LABELS[type]
   return (
-    <div
-      role="note"
-      aria-label={label}
-      style={{
-        background: 'var(--surface-1)',
-        borderLeft: `3px solid ${color}`,
-        borderTop: '1px solid var(--border)',
-        borderRight: '1px solid var(--border)',
-        borderBottom: '1px solid var(--border)',
-        borderRadius: '0.75rem',
-        padding: '1rem 1.25rem',
-        margin: '1.5rem 0',
-        display: 'flex',
-        gap: '0.75rem',
-        alignItems: 'flex-start',
-      }}
-    >
-      <Icon
-        size={20}
-        style={{ color, flexShrink: 0, marginTop: '0.125rem' }}
-        aria-hidden="true"
-      />
-      <div style={{ color: 'var(--foreground)', lineHeight: 1.6 }}>{children}</div>
+    <div data-testid="callout" className={`dx-callout ${type}`} role="note" aria-label={label}>
+      <span className="dx-callout-label">
+        <Mark type={type} />
+        {label}
+      </span>
+      <div className="dx-callout-body">{children}</div>
     </div>
   )
 }

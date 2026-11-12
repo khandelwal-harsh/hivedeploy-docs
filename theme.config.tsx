@@ -1,3 +1,4 @@
+import { Children, isValidElement, useEffect } from 'react'
 import type { FC, ReactNode } from 'react'
 import type { DocsThemeConfig } from 'nextra-theme-docs'
 import { useConfig } from 'nextra-theme-docs'
@@ -6,6 +7,15 @@ import { Callout } from './components/Callout'
 import { DiataxisBadge } from './components/DiataxisBadge'
 import { FeedbackWidget } from './components/FeedbackWidget'
 import { ScalarReference } from './components/ScalarReference'
+import { DocsHeader } from './components/chrome/DocsHeader'
+import { SiteFooter } from './components/chrome/SiteFooter'
+import { SearchTrigger } from './components/chrome/SearchTrigger'
+import { PageHead } from './components/chrome/PageHead'
+import { MobileToc, Toc, TocWrapper } from './components/chrome/Toc'
+import { headings } from './components/Heading'
+import { HomeHero } from './components/home/HomeHero'
+import { CodeBlock } from './components/mdx/CodeBlock'
+import { DocsTable } from './components/mdx/DocsTable'
 
 function Head() {
   const router = useRouter()
@@ -33,44 +43,110 @@ function Head() {
       <meta name="twitter:card" content="summary_large_image" />
       <link rel="canonical" href={canonical} />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      {/* Platform design system font (Geist) — CSP allows fonts.googleapis/gstatic */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap"
-        rel="stylesheet"
-      />
     </>
   )
 }
 
+/**
+ * Nextra hands `main` one fragment: [topContent, article, timestamp, bottomContent, pagination].
+ * The feedback widget goes between the article and the pagination, so the page foot reads
+ * feedback, then previous / next. If the shape ever differs, the widget is appended instead.
+ */
+function Main({ children }: { children: ReactNode }) {
+  const { pathname, asPath } = useRouter()
+  // Nextra renders its own <main> only in the default layout; a full-layout page is a bare <article>.
+  const full = useConfig().normalizePagesResult.activeThemeContext.layout === 'full'
+  // Nextra marks the open page with an `active` class only; assistive tech and the pill style want aria-current. It
+  // mounts the phone drawer's copy of the list after this effect first runs, and re-renders lists as folders open, so
+  // the mark is re-applied whenever the sidebar's links change (at most once a frame).
+  useEffect(() => {
+    const side = document.querySelector('.nextra-sidebar-container')
+    if (!side) return
+    const mark = () => {
+      side.querySelectorAll('a[aria-current="page"]').forEach((a) => {
+        if (!a.matches('li.active > a')) a.removeAttribute('aria-current')
+      })
+      side.querySelectorAll('li.active > a:not([aria-current="page"])').forEach((a) => a.setAttribute('aria-current', 'page'))
+    }
+    mark()
+    let frame = 0
+    const observer = new MutationObserver(() => {
+      if (!frame)
+        frame = requestAnimationFrame(() => {
+          frame = 0
+          mark()
+        })
+    })
+    observer.observe(side, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+    return () => {
+      observer.disconnect()
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [asPath])
+  // Nextra's previous / next cards show only a title; assistive tech also hears which way each goes, and the name
+  // starts with "Previous" or "Next" and keeps the visible title (WCAG 2.5.3). The next card is the one Nextra pushes right.
+  useEffect(() => {
+    document.querySelectorAll('.dx-pn a').forEach((a) => {
+      a.setAttribute('aria-label', `${a.matches('[class~="ltr:_ml-auto"]') ? 'Next' : 'Previous'}: ${(a.textContent ?? '').trim()}`)
+    })
+  }, [asPath])
+  // A full-layout page gets its main landmark one level below the article, so the default layout's `article > main`
+  // rules (the 720 measure, its padding, the gutter) never reach it.
+  if (pathname === '/') {
+    return (
+      <div className="dx-home">
+        <main>
+          <HomeHero />
+          <div className="dx-homebody">{children}</div>
+        </main>
+      </div>
+    )
+  }
+  const parts = isValidElement<{ children?: ReactNode }>(children) ? children.props.children : undefined
+  const raw = Array.isArray(parts) && parts.length === 5 ? (parts as ReactNode[]) : null
+  const pagination = raw?.[4]
+  const body = (
+    <div className="dx-body">
+      <PageHead />
+      <MobileToc />
+      {raw ? Children.toArray(raw.slice(0, 4)) : children}
+      <div className="dx-pagefoot">
+        <FeedbackWidget />
+        {pagination ? <div className="dx-pn">{pagination}</div> : null}
+      </div>
+    </div>
+  )
+  return full ? (
+    <div className="dx-full">
+      <main>{body}</main>
+    </div>
+  ) : (
+    body
+  )
+}
+
 const config: DocsThemeConfig = {
-  logo: (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.55rem', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-      <img src="/favicon.svg" alt="" width={20} height={20} />
-      hivedeploy / docs
-    </span>
-  ),
-  project: {
-    link: 'https://github.com/khandelwal-harsh/hivedeploy-docs',
-  },
+  navbar: { component: DocsHeader as FC },
+  search: { component: SearchTrigger as FC, placeholder: 'Search documentation…' },
+  sidebar: { toggleButton: false, autoCollapse: false },
   docsRepositoryBase: 'https://github.com/khandelwal-harsh/hivedeploy-docs/blob/main',
-  footer: {
-    content: <span>© {new Date().getFullYear()} Hivedeploy</span>,
-  },
+  footer: { component: SiteFooter as FC },
   components: {
+    ...headings,
+    pre: CodeBlock as FC,
+    table: DocsTable as FC,
+    wrapper: TocWrapper as FC,
     Callout: Callout as FC,
     DiataxisBadge: DiataxisBadge as FC,
     ScalarReference: ScalarReference as FC,
   },
-  main: (({ children }: { children: ReactNode }) => (
-    <>
-      {children}
-      <FeedbackWidget />
-    </>
-  )) as FC<{ children: ReactNode }>,
-  darkMode: true,
-  nextThemes: { defaultTheme: 'dark' },
+  toc: { component: Toc as FC, float: true },
+  gitTimestamp: null,
+  main: Main as FC<{ children: ReactNode }>,
+  darkMode: false,
+  nextThemes: { defaultTheme: 'dark', forcedTheme: 'dark' },
+  color: { hue: 44, saturation: 99 },
+  backgroundColor: { dark: '8,8,10', light: '8,8,10' },
   head: Head,
 }
 

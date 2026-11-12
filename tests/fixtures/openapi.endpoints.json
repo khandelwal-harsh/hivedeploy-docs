@@ -1,0 +1,102 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Fixture API",
+    "version": "0.0.1",
+    "description": "A small spec with endpoints, for tests only. The site serves public/openapi.example.json (no endpoints) by default."
+  },
+  "servers": [{ "url": "http://127.0.0.1:9" }],
+  "tags": [
+    { "name": "Deployments", "description": "Create and read deployments." },
+    { "name": "Clouds", "description": "Connected cloud accounts." }
+  ],
+  "components": {
+    "securitySchemes": { "bearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } },
+    "schemas": {
+      "Deployment": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "0b6f1e4e-6d5a-4c1e-9a43-2f1f3c2b7d10" },
+          "status": { "type": "string", "enum": ["pending", "running", "healthy", "failed"], "example": "running" },
+          "cloud": { "type": "string", "example": "aws" },
+          "created_at": { "type": "string", "format": "date-time", "example": "2026-11-12T10:00:00Z" }
+        }
+      },
+      "NewDeployment": {
+        "type": "object",
+        "required": ["prompt"],
+        "properties": {
+          "prompt": { "type": "string", "example": "A Postgres 16 with a read replica" },
+          "cloud": { "type": "string", "example": "gcp" }
+        }
+      },
+      "Cloud": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "acc_123" },
+          "provider": { "type": "string", "enum": ["aws", "gcp", "azure"], "example": "aws" }
+        }
+      }
+    }
+  },
+  "security": [{ "bearer": [] }],
+  "paths": {
+    "/v1/deployments": {
+      "get": {
+        "tags": ["Deployments"],
+        "summary": "List deployments",
+        "operationId": "listDeployments",
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }],
+        "responses": {
+          "200": {
+            "description": "The deployments, newest first.",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Deployment" } } } }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Deployments"],
+        "summary": "Create a deployment",
+        "operationId": "createDeployment",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NewDeployment" } } }
+        },
+        "responses": {
+          "201": { "description": "Created.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Deployment" } } } },
+          "422": { "description": "The prompt could not be planned." }
+        }
+      }
+    },
+    "/v1/deployments/{id}": {
+      "get": {
+        "tags": ["Deployments"],
+        "summary": "Get a deployment",
+        "operationId": "getDeployment",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "The deployment.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Deployment" } } } },
+          "404": { "description": "No such deployment." }
+        }
+      },
+      "delete": {
+        "tags": ["Deployments"],
+        "summary": "Tear down a deployment",
+        "operationId": "deleteDeployment",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "202": { "description": "Teardown started." } }
+      }
+    },
+    "/v1/clouds": {
+      "get": {
+        "tags": ["Clouds"],
+        "summary": "List connected clouds",
+        "operationId": "listClouds",
+        "responses": {
+          "200": { "description": "Connected accounts.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Cloud" } } } } }
+        }
+      }
+    }
+  }
+}
